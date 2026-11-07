@@ -1,0 +1,59 @@
+{
+  "name": "scale_c_major_cello",
+  "description": "Ascending C-major scale fragment in cello tenor range: C3 D3 E3 F3 G3 A3 B3 C4 (quarter notes @ ~100 BPM).",
+  "synthesis": "additive harmonic (cello-range), not a sampled instrument",
+  "sample_rate": 44100,
+  "duration_sec": 5.0,
+  "num_notes": 8,
+  "expected_notes": [
+    {
+      "midi": 48,
+      "onset": 0.05,
+      "offset": 0.6,
+      "duration": 0.55
+    },
+    {
+      "midi": 50,
+      "onset": 0.65,
+      "offset": 1.2,
+      "duration": 0.55
+    },
+    {
+      "midi": 52,
+      "onset": 1.25,
+      "offset": 1.8,
+      "duration": 0.55
+    },
+    {
+      "midi": 53,
+      "onset": 1.85,
+      "offset": 2.4,
+      "duration": 0.55
+    },
+    {
+      "midi": 55,
+      "onset": 2.45,
+      "offset": 3.0,
+      "duration": 0.55
+    },
+    {
+      "midi": 57,
+      "onset": 3.05,
+      "offset": 3.6,
+      "duration": 0.55
+    },
+    {
+      "midi": 59,
+      "onset": 3.65,
+      "offset": 4.2,
+      "duration": 0.55
+    },
+    {
+      "midi": 60,
+      "onset": 4.25,
+      "offset": 4.95,
+      "duration": 0.7
+    }
+  ],
+  "source": "scripts/generate_multi_note_phrases.py"
+}

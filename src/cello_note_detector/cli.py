@@ -16,12 +16,19 @@ from cello_note_detector.audio.mert import (
     load_mert,
     summarize_embeddings,
 )
-from cello_note_detector.audio.pitch_baseline import detect_f0, f0_to_note_events
+from cello_note_detector.audio.pitch_baseline import (
+    DEFAULT_GAP_TOLERANCE,
+    DEFAULT_HOP_LENGTH,
+    DEFAULT_MEDIAN_FILTER_SIZE,
+    DEFAULT_MIN_DURATION,
+    transcribe_notes,
+)
 from cello_note_detector.decode.events import note_events_to_dicts
 
 # Repo root: .../src/cello_note_detector/cli.py → parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECORDINGS = _REPO_ROOT / "data" / "Recordings"
+DEFAULT_PHRASES = _REPO_ROOT / "data" / "multi_note_phrases"
 DEFAULT_OUTPUT_DIR = _REPO_ROOT / "outputs"
 
 
@@ -53,13 +60,21 @@ def _process_one(
     save_embeddings: bool,
     skip_mert: bool,
     min_duration: float,
+    gap_tolerance: float,
+    median_filter_size: int,
+    use_onsets: bool,
 ) -> dict:
     audio, sr = load_mono(wav_path, sr=TARGET_SR)
     duration_s = float(len(audio) / sr)
 
-    times, f0, voiced_flag, voiced_probs = detect_f0(audio, sr=sr)
-    events = f0_to_note_events(
-        times, f0, voiced_flag, voiced_probs, sr=sr, min_duration=min_duration
+    events, seg_meta = transcribe_notes(
+        audio,
+        sr=sr,
+        min_duration=min_duration,
+        gap_tolerance=gap_tolerance,
+        median_filter_size=median_filter_size,
+        use_onsets=use_onsets,
+        hop_length=DEFAULT_HOP_LENGTH,
     )
     note_dicts = note_events_to_dicts(events)
 
@@ -84,6 +99,7 @@ def _process_one(
         "duration_sec": round(duration_s, 4),
         "pitch_method": "librosa.pyin",
         "cello_range": {"fmin": "C2", "fmax": "A5"},
+        "segmentation": seg_meta,
         "num_notes": len(note_dicts),
         "notes": note_dicts,
         "mert": mert_info,
@@ -101,9 +117,10 @@ def _print_summary(result: dict) -> None:
     print(
         f"duration={result['duration_sec']:.2f}s  "
         f"notes={result['num_notes']}  "
+        f"onsets={result['segmentation'].get('num_onsets', 0)}  "
         f"json={result['_json_path']}"
     )
-    preview = result["notes"][:8]
+    preview = result["notes"][:12]
     for n in preview:
         print(
             f"  {n['onset']:6.2f}–{n['offset']:6.2f}s  "
@@ -130,8 +147,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="cello-note-detector",
         description=(
-            "Milestone 1: monophonic cello WAV → pyin note events + "
-            "MERT-v1-95M frame embeddings."
+            "Monophonic cello WAV → multi-note pyin transcription + "
+            "optional MERT-v1-95M frame embeddings."
         ),
     )
     p.add_argument(
@@ -172,8 +189,34 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--min-duration",
         type=float,
-        default=0.05,
-        help="Drop note events shorter than this many seconds (default: 0.05)",
+        default=DEFAULT_MIN_DURATION,
+        help=(
+            "Drop note events shorter than this many seconds "
+            f"(default: {DEFAULT_MIN_DURATION})"
+        ),
+    )
+    p.add_argument(
+        "--gap-tolerance",
+        type=float,
+        default=DEFAULT_GAP_TOLERANCE,
+        help=(
+            "Max unvoiced gap (seconds) to bridge inside one note "
+            f"(default: {DEFAULT_GAP_TOLERANCE})"
+        ),
+    )
+    p.add_argument(
+        "--median-filter-size",
+        type=int,
+        default=DEFAULT_MEDIAN_FILTER_SIZE,
+        help=(
+            "Odd-ish median window over voiced MIDI frames to reduce flicker "
+            f"(default: {DEFAULT_MEDIAN_FILTER_SIZE}; 1 disables)"
+        ),
+    )
+    p.add_argument(
+        "--no-onsets",
+        action="store_true",
+        help="Disable onset-based splits (pitch-change / gaps only)",
     )
     return p
 
@@ -199,6 +242,9 @@ def main(argv: list[str] | None = None) -> int:
             save_embeddings=args.save_embeddings,
             skip_mert=args.skip_mert,
             min_duration=args.min_duration,
+            gap_tolerance=args.gap_tolerance,
+            median_filter_size=args.median_filter_size,
+            use_onsets=not args.no_onsets,
         )
         _print_summary(result)
 

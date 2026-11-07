@@ -1,5 +1,5 @@
 {
-  "audio_path": "C:\\Users\\Teddy\\Documents\\cello-note-detector\\data\\Recordings\\Am_LFCello_SP_01_376.wav",
+  "audio_path": "data/Recordings/Am_LFCello_SP_01_376.wav",
   "sample_rate": 24000,
   "duration_sec": 8.5516,
   "pitch_method": "librosa.pyin",
@@ -7,30 +7,30 @@
     "fmin": "C2",
     "fmax": "A5"
   },
+  "segmentation": {
+    "frame_length": 2048,
+    "hop_length": 256,
+    "min_duration": 0.04,
+    "gap_tolerance": 0.06,
+    "median_filter_size": 5,
+    "use_onsets": true,
+    "min_onset_strength": 1.2,
+    "num_onsets": 1,
+    "onset_times": [
+      0.0533
+    ]
+  },
   "num_notes": 1,
   "notes": [
     {
-      "pitch_hz": 165.7997,
+      "pitch_hz": 165.8283,
       "midi": 52,
       "note": "E3",
-      "onset": 0.0,
+      "onset": 0.096,
       "offset": 8.5547,
-      "duration": 8.5547,
-      "confidence": 0.9323
+      "duration": 8.4587,
+      "confidence": 0.8371
     }
   ],
-  "mert": {
-    "model_id": "m-a-p/MERT-v1-95M",
-    "device": "cpu",
-    "summary": {
-      "shape": [
-        641,
-        768
-      ],
-      "dtype": "float32",
-      "mean": -0.007611445616930723,
-      "std": 0.4312679171562195,
-      "l2_norm_mean": 11.886697769165039
-    }
-  }
+  "mert": null
 }
