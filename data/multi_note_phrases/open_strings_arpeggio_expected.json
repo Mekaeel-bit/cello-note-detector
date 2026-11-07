@@ -1,0 +1,59 @@
+{
+  "name": "open_strings_arpeggio",
+  "description": "Cello open-string style arpeggio: C2 G2 D3 A3 then descending A3 D3 G2 C2 (synthetic harmonics, not a real open-string sample).",
+  "synthesis": "additive harmonic (cello-range), not a sampled instrument",
+  "sample_rate": 44100,
+  "duration_sec": 4.25,
+  "num_notes": 8,
+  "expected_notes": [
+    {
+      "midi": 36,
+      "onset": 0.05,
+      "offset": 0.55,
+      "duration": 0.5
+    },
+    {
+      "midi": 43,
+      "onset": 0.6,
+      "offset": 1.1,
+      "duration": 0.5
+    },
+    {
+      "midi": 50,
+      "onset": 1.15,
+      "offset": 1.65,
+      "duration": 0.5
+    },
+    {
+      "midi": 57,
+      "onset": 1.7,
+      "offset": 2.2,
+      "duration": 0.5
+    },
+    {
+      "midi": 57,
+      "onset": 2.25,
+      "offset": 2.65,
+      "duration": 0.4
+    },
+    {
+      "midi": 50,
+      "onset": 2.7,
+      "offset": 3.1,
+      "duration": 0.4
+    },
+    {
+      "midi": 43,
+      "onset": 3.15,
+      "offset": 3.55,
+      "duration": 0.4
+    },
+    {
+      "midi": 36,
+      "onset": 3.6,
+      "offset": 4.2,
+      "duration": 0.6
+    }
+  ],
+  "source": "scripts/generate_multi_note_phrases.py"
+}
