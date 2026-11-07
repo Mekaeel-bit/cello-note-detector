@@ -55,5 +55,43 @@
       "duration": 0.6
     }
   ],
+  "num_rests": 7,
+  "expected_rests": [
+    {
+      "onset": 0.55,
+      "offset": 0.6,
+      "duration": 0.05
+    },
+    {
+      "onset": 1.1,
+      "offset": 1.15,
+      "duration": 0.05
+    },
+    {
+      "onset": 1.65,
+      "offset": 1.7,
+      "duration": 0.05
+    },
+    {
+      "onset": 2.2,
+      "offset": 2.25,
+      "duration": 0.05
+    },
+    {
+      "onset": 2.65,
+      "offset": 2.7,
+      "duration": 0.05
+    },
+    {
+      "onset": 3.1,
+      "offset": 3.15,
+      "duration": 0.05
+    },
+    {
+      "onset": 3.55,
+      "offset": 3.6,
+      "duration": 0.05
+    }
+  ],
   "source": "scripts/generate_multi_note_phrases.py"
 }

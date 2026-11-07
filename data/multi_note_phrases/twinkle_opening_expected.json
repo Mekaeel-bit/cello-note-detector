@@ -49,5 +49,38 @@
       "duration": 0.8
     }
   ],
+  "num_rests": 6,
+  "expected_rests": [
+    {
+      "onset": 0.5,
+      "offset": 0.56,
+      "duration": 0.06
+    },
+    {
+      "onset": 1.01,
+      "offset": 1.07,
+      "duration": 0.06
+    },
+    {
+      "onset": 1.52,
+      "offset": 1.58,
+      "duration": 0.06
+    },
+    {
+      "onset": 2.03,
+      "offset": 2.09,
+      "duration": 0.06
+    },
+    {
+      "onset": 2.54,
+      "offset": 2.6,
+      "duration": 0.06
+    },
+    {
+      "onset": 3.05,
+      "offset": 3.11,
+      "duration": 0.06
+    }
+  ],
   "source": "scripts/generate_multi_note_phrases.py"
 }

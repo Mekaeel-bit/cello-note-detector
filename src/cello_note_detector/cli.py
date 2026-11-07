@@ -1,4 +1,4 @@
-"""CLI: pyin note events + MERT frame embeddings for cello WAVs."""
+"""CLI: pyin note events + rhythm quantization + optional MERT embeddings."""
 
 from __future__ import annotations
 
@@ -24,6 +24,11 @@ from cello_note_detector.audio.pitch_baseline import (
     transcribe_notes,
 )
 from cello_note_detector.decode.events import note_events_to_dicts
+from cello_note_detector.decode.rhythm import (
+    DEFAULT_GRID_BEATS,
+    DEFAULT_MIN_REST_SEC,
+    analyze_rhythm,
+)
 
 # Repo root: .../src/cello_note_detector/cli.py → parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -52,6 +57,16 @@ def _discover_wavs(path: Path) -> list[Path]:
     return unique
 
 
+def _merge_note_rhythm(note_dicts: list[dict], note_rhythm: list[dict]) -> list[dict]:
+    """Attach quantized rhythm fields onto each note dict."""
+    out: list[dict] = []
+    for n, r in zip(note_dicts, note_rhythm):
+        merged = dict(n)
+        merged.update(r)
+        out.append(merged)
+    return out
+
+
 def _process_one(
     wav_path: Path,
     *,
@@ -59,10 +74,14 @@ def _process_one(
     mert_bundle,
     save_embeddings: bool,
     skip_mert: bool,
+    skip_rhythm: bool,
     min_duration: float,
     gap_tolerance: float,
     median_filter_size: int,
     use_onsets: bool,
+    grid_beats: float,
+    min_rest_sec: float,
+    no_edge_rests: bool,
 ) -> dict:
     audio, sr = load_mono(wav_path, sr=TARGET_SR)
     duration_s = float(len(audio) / sr)
@@ -77,6 +96,23 @@ def _process_one(
         hop_length=DEFAULT_HOP_LENGTH,
     )
     note_dicts = note_events_to_dicts(events)
+
+    rhythm_info: dict | None = None
+    rests: list[dict] = []
+    timeline: list[dict] = []
+    if not skip_rhythm:
+        rhythm_info = analyze_rhythm(
+            audio,
+            events,
+            sr=sr,
+            grid_beats=grid_beats,
+            min_rest_sec=min_rest_sec,
+            include_leading_rests=not no_edge_rests,
+            include_trailing_rests=not no_edge_rests,
+        )
+        note_dicts = _merge_note_rhythm(note_dicts, rhythm_info["note_rhythm"])
+        rests = rhythm_info["rests"]
+        timeline = rhythm_info["events"]
 
     mert_info: dict | None = None
     emb_path: str | None = None
@@ -93,7 +129,7 @@ def _process_one(
             emb_path = str(emb_file)
             mert_info["embeddings_path"] = emb_path
 
-    result = {
+    result: dict = {
         "audio_path": str(wav_path),
         "sample_rate": sr,
         "duration_sec": round(duration_s, 4),
@@ -105,6 +141,17 @@ def _process_one(
         "mert": mert_info,
     }
 
+    if rhythm_info is not None:
+        result["tempo"] = rhythm_info["tempo"]
+        result["rhythm"] = {
+            "grid_beats": rhythm_info["grid_beats"],
+            "min_rest_sec": rhythm_info["min_rest_sec"],
+            "method": "librosa.beat + note-IOI blend; duration catalog snap",
+        }
+        result["num_rests"] = rhythm_info["num_rests"]
+        result["rests"] = rests
+        result["events"] = timeline
+
     json_path = output_dir / f"{wav_path.stem}_notes.json"
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
@@ -114,21 +161,42 @@ def _process_one(
 
 def _print_summary(result: dict) -> None:
     print(f"\n=== {Path(result['audio_path']).name} ===")
+    tempo = result.get("tempo")
+    tempo_bit = f"  tempo={tempo['bpm']:.1f} BPM" if tempo else ""
+    rests_bit = (
+        f"  rests={result.get('num_rests', 0)}"
+        if "num_rests" in result
+        else ""
+    )
     print(
         f"duration={result['duration_sec']:.2f}s  "
-        f"notes={result['num_notes']}  "
+        f"notes={result['num_notes']}"
+        f"{rests_bit}"
+        f"{tempo_bit}  "
         f"onsets={result['segmentation'].get('num_onsets', 0)}  "
         f"json={result['_json_path']}"
     )
     preview = result["notes"][:12]
     for n in preview:
+        dur_val = n.get("duration_value")
+        dur_bit = f"  {dur_val}" if dur_val else ""
         print(
-            f"  {n['onset']:6.2f}–{n['offset']:6.2f}s  "
+            f"  note  {n['onset']:6.2f}–{n['offset']:6.2f}s  "
             f"{n['note']:>4}  midi={n['midi']:3d}  "
-            f"conf={n['confidence']:.2f}"
+            f"conf={n['confidence']:.2f}{dur_bit}"
         )
     if result["num_notes"] > len(preview):
         print(f"  … {result['num_notes'] - len(preview)} more notes")
+
+    rests = result.get("rests") or []
+    for r in rests[:8]:
+        dur_val = r.get("duration_value", "?")
+        print(
+            f"  rest  {r['onset']:6.2f}–{r['offset']:6.2f}s  "
+            f"dur={r['duration']:.3f}s  {dur_val}"
+        )
+    if len(rests) > 8:
+        print(f"  … {len(rests) - 8} more rests")
 
     mert = result.get("mert")
     if mert:
@@ -147,8 +215,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="cello-note-detector",
         description=(
-            "Monophonic cello WAV → multi-note pyin transcription + "
-            "optional MERT-v1-95M frame embeddings."
+            "Monophonic cello WAV → multi-note pyin transcription, "
+            "tempo/rhythm quantization (notes + rests), and optional "
+            "MERT-v1-95M frame embeddings."
         ),
     )
     p.add_argument(
@@ -184,7 +253,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--skip-mert",
         action="store_true",
-        help="Only run pyin note detection (no model download)",
+        help="Only run pyin + rhythm (no model download)",
+    )
+    p.add_argument(
+        "--skip-rhythm",
+        action="store_true",
+        help="Disable tempo estimation and duration/rest quantization",
+    )
+    p.add_argument(
+        "--grid-beats",
+        type=float,
+        default=DEFAULT_GRID_BEATS,
+        help=(
+            "Beat subdivision for onset/duration snap "
+            f"(default: {DEFAULT_GRID_BEATS} = sixteenth)"
+        ),
+    )
+    p.add_argument(
+        "--min-rest-sec",
+        type=float,
+        default=DEFAULT_MIN_REST_SEC,
+        help=(
+            "Minimum silence gap (seconds) to emit as a rest "
+            f"(default: {DEFAULT_MIN_REST_SEC})"
+        ),
+    )
+    p.add_argument(
+        "--no-edge-rests",
+        action="store_true",
+        help="Omit leading/trailing rests; keep only inter-note gaps",
     )
     p.add_argument(
         "--min-duration",
@@ -241,10 +338,14 @@ def main(argv: list[str] | None = None) -> int:
             mert_bundle=mert_bundle,
             save_embeddings=args.save_embeddings,
             skip_mert=args.skip_mert,
+            skip_rhythm=args.skip_rhythm,
             min_duration=args.min_duration,
             gap_tolerance=args.gap_tolerance,
             median_filter_size=args.median_filter_size,
             use_onsets=not args.no_onsets,
+            grid_beats=args.grid_beats,
+            min_rest_sec=args.min_rest_sec,
+            no_edge_rests=args.no_edge_rests,
         )
         _print_summary(result)
 
