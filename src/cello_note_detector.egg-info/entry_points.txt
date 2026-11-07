@@ -1,0 +1,2 @@
+[console_scripts]
+cello-note-detector = cello_note_detector.cli:main

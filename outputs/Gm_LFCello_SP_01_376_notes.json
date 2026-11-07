@@ -1,0 +1,36 @@
+{
+  "audio_path": "C:\\Users\\Teddy\\Documents\\cello-note-detector\\data\\Recordings\\Gm_LFCello_SP_01_376.wav",
+  "sample_rate": 24000,
+  "duration_sec": 8.5169,
+  "pitch_method": "librosa.pyin",
+  "cello_range": {
+    "fmin": "C2",
+    "fmax": "A5"
+  },
+  "num_notes": 1,
+  "notes": [
+    {
+      "pitch_hz": 196.2137,
+      "midi": 55,
+      "note": "G3",
+      "onset": 0.0,
+      "offset": 8.5333,
+      "duration": 8.5333,
+      "confidence": 0.9088
+    }
+  ],
+  "mert": {
+    "model_id": "m-a-p/MERT-v1-95M",
+    "device": "cpu",
+    "summary": {
+      "shape": [
+        639,
+        768
+      ],
+      "dtype": "float32",
+      "mean": -0.009630289860069752,
+      "std": 0.46865609288215637,
+      "l2_norm_mean": 12.929192543029785
+    }
+  }
+}
