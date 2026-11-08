@@ -1,4 +1,4 @@
-# cello-note-detector
+# Soli
 
 Hackathon app for identifying cello notes from **monophonic audio**, plus a **video fingerings/bowings sandbox**.
 
