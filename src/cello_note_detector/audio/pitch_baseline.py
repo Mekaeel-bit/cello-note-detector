@@ -49,7 +49,10 @@ DEFAULT_NEAR_DUP_GUEST_SEC = 0.08
 # Cello open strings (instrument prior, not piece-specific). pyin often locks
 # onto the strong 2nd harmonic (G3 for open G2, etc.); spectral check snaps down.
 CELLO_OPEN_STRING_MIDI = frozenset({36, 43, 50, 57})  # C2 G2 D3 A3
-DEFAULT_OCTAVE_CORR_HALF_RATIO = 0.18  # E(f0/2) / E(f0) to accept lower octave
+DEFAULT_OCTAVE_CORR_HALF_RATIO = 0.12  # E(f0/2) / E(f0) to accept lower octave
+# Subharmonic lock: E(2·f0) / E(f0) to lift one octave (not open-string MIDI).
+DEFAULT_OCTAVE_CORR_DOUBLE_RATIO = 5.0
+DEFAULT_OCTAVE_CORR_MAX_CONF_UP = 0.40
 DEFAULT_OCTAVE_CORRECT = True
 
 
@@ -497,32 +500,40 @@ def correct_cello_octave_errors(
     sr: int = TARGET_SR,
     open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
     half_ratio: float = DEFAULT_OCTAVE_CORR_HALF_RATIO,
-) -> list[NoteEvent]:
-    """Snap harmonic octave errors down using spectrum (cello open-string prior).
+    double_ratio: float = DEFAULT_OCTAVE_CORR_DOUBLE_RATIO,
+    max_conf_up: float = DEFAULT_OCTAVE_CORR_MAX_CONF_UP,
+    midi_min: int = 36,
+    midi_max: int = 84,
+) -> tuple[list[NoteEvent], list[bool]]:
+    """Spectral ±1 octave repair (cello instrument prior, not piece-specific).
 
-    pyin often reports G3/D4/… when the sounding fundamental is the open
-    string an octave below. If ``midi-12`` is an open string and the spectrum
-    has meaningful energy at f0/2, rewrite to the lower octave. Instrument
-    prior only — not piece-specific.
+    - **Up:** pyin sometimes locks a subharmonic (e.g. B2 for B3). When
+      energy at ``2·f0`` dominates and the reported MIDI is *not* an open
+      string, lift one octave. Low/moderate confidence only.
+    - **Down:** open-string harmonic snap — if ``midi-12`` is an open string
+      and ``f0/2`` has enough energy relative to ``f0``, drop one octave.
+
+    Returns ``(events, locked)`` where ``locked[i]`` is True for spectrally
+    rewritten notes so a later Viterbi pass will not undo them.
     """
+    n = len(events)
     if not events or audio.size == 0:
-        return events
+        return events, [False] * n
 
     out: list[NoteEvent] = []
+    locked: list[bool] = []
     n_fft = 2048
     freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
     width = max(3.0, float(sr) / n_fft)
 
     for ev in events:
-        lower = int(ev.midi) - 12
-        if lower not in open_strings:
-            out.append(ev)
-            continue
+        midi = int(ev.midi)
         a0 = max(0, int(float(ev.onset) * sr))
         a1 = min(len(audio), int(float(ev.offset) * sr))
         seg = audio[a0:a1]
         if seg.size < n_fft // 4:
             out.append(ev)
+            locked.append(False)
             continue
         # Zero-pad short segments so stft is stable.
         if seg.size < n_fft:
@@ -535,28 +546,50 @@ def correct_cello_octave_errors(
             )
         )
         mag_mean = np.mean(mag, axis=1)
-        f_hi = float(librosa.midi_to_hz(ev.midi))
-        f_lo = float(librosa.midi_to_hz(lower))
-        e_hi = _band_energy(mag_mean, freqs, f_hi, width)
-        e_lo = _band_energy(mag_mean, freqs, f_lo, width)
-        if e_hi <= 1e-12:
+        f0 = float(librosa.midi_to_hz(midi))
+        e0 = _band_energy(mag_mean, freqs, f0, width)
+        e_half = _band_energy(mag_mean, freqs, f0 / 2.0, width)
+        e_dbl = _band_energy(mag_mean, freqs, 2.0 * f0, width)
+        if e0 <= 1e-12:
             out.append(ev)
+            locked.append(False)
             continue
-        if e_lo / e_hi >= half_ratio:
+        half = e_half / e0
+        dbl = e_dbl / e0
+        new_midi = midi
+        # Prefer up when 2·f0 dominates (subharmonic); never lift open strings.
+        if (
+            midi not in open_strings
+            and midi + 12 <= midi_max
+            and dbl >= double_ratio
+            and float(ev.confidence) <= max_conf_up
+        ):
+            new_midi = midi + 12
+        elif (
+            midi - 12 >= midi_min
+            and (midi - 12) in open_strings
+            and half >= half_ratio
+            and dbl < double_ratio
+        ):
+            new_midi = midi - 12
+
+        if new_midi != midi:
             out.append(
                 NoteEvent(
-                    pitch_hz=round(f_lo, 4),
-                    midi=lower,
-                    note=librosa.midi_to_note(lower),
+                    pitch_hz=round(float(librosa.midi_to_hz(new_midi)), 4),
+                    midi=int(new_midi),
+                    note=librosa.midi_to_note(new_midi),
                     onset=ev.onset,
                     offset=ev.offset,
                     duration=ev.duration,
                     confidence=ev.confidence,
                 )
             )
+            locked.append(True)
         else:
             out.append(ev)
-    return out
+            locked.append(False)
+    return out, locked
 
 
 DEFAULT_OCTAVE_LOCK_CONF = 0.20
@@ -566,6 +599,7 @@ def resolve_octave_ambiguities(
     events: list[NoteEvent],
     *,
     lock_conf: float = DEFAULT_OCTAVE_LOCK_CONF,
+    locked: list[bool] | None = None,
     open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
     open_bonus: float = 6.0,
     midi_min: int = 36,
@@ -573,7 +607,8 @@ def resolve_octave_ambiguities(
 ) -> list[NoteEvent]:
     """Viterbi ±1 octave repair for low-confidence notes (piece-agnostic).
 
-    High-confidence pitches stay locked. Uncertain notes may move ±1 octave
+    High-confidence pitches stay locked, as do notes marked in ``locked``
+    (typically spectral corrections). Uncertain notes may move ±1 octave
     to minimize melodic leap cost, with a bonus for cello open-string pedals
     so G2 is preferred over G3 when both are reachable.
     """
@@ -581,9 +616,14 @@ def resolve_octave_ambiguities(
     if n < 2:
         return events
 
+    if locked is None:
+        locked = [False] * n
+    elif len(locked) != n:
+        raise ValueError("locked mask length must match events")
+
     cands: list[list[int]] = []
-    for ev in events:
-        if float(ev.confidence) >= lock_conf:
+    for ev, is_locked in zip(events, locked):
+        if is_locked or float(ev.confidence) >= lock_conf:
             cands.append([int(ev.midi)])
         else:
             opts = [
@@ -724,10 +764,13 @@ def transcribe_notes(
         events = merge_adjacent_near_duplicates(events)
     n_pre_octave = len(events)
     if octave_correct:
-        # Spectral open-string harmonic snap, then Viterbi ±1 octave repair
-        # for low-confidence notes only (high-confidence pitches stay locked).
-        events = correct_cello_octave_errors(events, audio, sr=sr)
-        events = resolve_octave_ambiguities(events)
+        # Spectral ±1 octave (subharmonic up + open-string harmonic down),
+        # then Viterbi repair for remaining low-confidence notes. Spectral
+        # rewrites stay locked so leap-minimization cannot undo them.
+        events, octave_locked = correct_cello_octave_errors(
+            events, audio, sr=sr
+        )
+        events = resolve_octave_ambiguities(events, locked=octave_locked)
     n_pre_trim = len(events)
     if trim_trailing:
         events = trim_trailing_low_confidence(events)
