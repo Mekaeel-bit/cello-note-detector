@@ -20,8 +20,13 @@ pretend a pre-existing catalog file is a Shazam hit.
 1. Fingerprint audio (pitch sequence).
 2. Search **local** `catalog.json` (extensible; not limited to 2 pieces).
 3. On miss, `--discover` (default with `--identify`) consults
-   `discovery_index.json` and tries live IMSLP/Mutopia/direct MusicXML URLs.
+   `discovery_index.json` and tries live IMSLP/Mutopia/direct MusicXML URLs,
+   or **engraved PDF → Audiveris OMR** when `omr_pdf: true` (PDF-only works).
 4. Still miss → audio transcription.
+
+Prefer **single-movement engraved** PDFs (Hamrefors Caprice No.2) over complete
+Caprices books or manuscripts. MATCH exports only the **clip-aligned** span of
+that movement — never an entire multi-work collection.
 
 ```bash
 python -m cello_note_detector data/multi_note_phrases/clement-caprices.wav \
@@ -66,7 +71,17 @@ python scripts/add_catalog_piece.py \
   --typical-duration-sec 180
 ```
 
-Prefer **MusicXML/MXL edition files**. Do not scrape commercial editions.
+Prefer **MusicXML/MXL edition files** when IMSLP has them. For PDF-only PD
+works, convert a clean engraved PDF first:
+
+```bash
+python scripts/pdf_to_musicxml.py /path/to/engraved.pdf -o /tmp/omr --fingerprint
+python scripts/add_catalog_piece.py --id my_solo --musicxml /tmp/omr/*.musicxml …
+```
+
+Do not scrape commercial editions. OMR quality limits: engraved typesets OK;
+manuscripts rejected by default; always spot-check MuseScore.
 
 Current test entries: Bach BWV 1007 Prélude, Gabrielli 1st Ricercar,
-Dall'Abaco Capricci Nos. 1–2 (Clément — **not** Clementi).
+Dall'Abaco Capricci Nos. 1–2 (Clément — **not** Clementi). Caprice 2 edition =
+Hamrefors IMSLP #618567 PDF → Audiveris OMR.

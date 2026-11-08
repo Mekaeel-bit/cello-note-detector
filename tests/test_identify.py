@@ -105,6 +105,7 @@ def test_empty_catalog_falls_back():
 def test_attach_copies_edition_musicxml_verbatim(tmp_path: Path):
     entries = load_catalog(_CATALOG, repo_root=_REPO)
     entry = next(e for e in entries if e.id == "bwv1007_prelude")
+    # Full-movement take: duration ≈ typical → keep whole edition (not a collection).
     identification = identify_sequence(entry.midi_sequence[:48], catalog=entries)
     assert identification.matched
 
@@ -133,6 +134,45 @@ def test_attach_copies_edition_musicxml_verbatim(tmp_path: Path):
     assert "slur" in text
     octaves = [int(o) for o in re.findall(r"<octave>(\d)</octave>", text)]
     assert min(octaves) >= 2
+
+
+def test_attach_clip_excerpt_not_full_collection(tmp_path: Path):
+    """MATCH MusicXML must be the played span, not an oversized edition dump."""
+    from cello_note_detector.identify.musicxml_edition import parse_musicxml_fingerprint
+
+    entries = load_catalog(_CATALOG, repo_root=_REPO)
+    entry = next(e for e in entries if e.id == "dallabaco_capriccio2")
+    # Mid-piece excerpt: short duration + hyp_in_ref window → clip_excerpt.
+    hyp = entry.midi_sequence[40:40 + 64]
+    identification = identify_sequence(hyp, catalog=entries)
+    assert identification.matched
+    assert identification.entry is not None
+    assert identification.entry.id == "dallabaco_capriccio2"
+
+    result = {
+        "audio_path": "data/multi_note_phrases/clement-caprices.wav",
+        "duration_sec": 45.0,  # clearly shorter than ~176s Caprice 2
+        "notes": [{"midi": m} for m in hyp],
+        "events": [],
+    }
+    out = attach_catalog_score(
+        result,
+        identification,
+        output_dir=tmp_path,
+        stem="clement-caprices",
+        export_musicxml=True,
+        export_midi=False,
+        catalog_entries=entries,
+    )
+    xml_path = tmp_path / "clement-caprices.musicxml"
+    assert xml_path.is_file()
+    assert out["identification"]["score_kind"] == "clip_excerpt_pd_edition"
+    excerpt = out["identification"]["clip_excerpt"]
+    assert excerpt["start_note"] is not None
+    assert excerpt["end_note"] - excerpt["start_note"] < entry.num_notes
+    fp = parse_musicxml_fingerprint(xml_path)
+    assert fp["num_notes"] < entry.num_notes
+    assert fp["num_notes"] >= 32
 
 
 def test_copy_edition_helper(tmp_path: Path):

@@ -147,7 +147,7 @@ MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity chec
 
 Flow: audio fingerprint → **local catalog** → on miss, **`--discover`** (default) tries remote PD seeds in `data/catalog/discovery_index.json` → still miss → **transcription**.
 
-Test entries (extensible — not a closed list): Bach Suite 1 Prélude, Gabrielli 1st Ricercar, **Dall'Abaco Capricci 1–2** (Joseph Marie **Clément** Dall'Abaco — not Clementi). On MATCH, primary `<stem>.musicxml` is a **verbatim** edition copy; performance dump: `<stem>_transcribed.musicxml`.
+Test entries (extensible — not a closed list): Bach Suite 1 Prélude, Gabrielli 1st Ricercar, **Dall'Abaco Capricci 1–2** (Joseph Marie **Clément** Dall'Abaco — not Clementi). Caprice 2 edition is **IMSLP PDF → Audiveris OMR** (Hamrefors engraved Caprice No.2 — not the complete Caprices book). On MATCH, primary `<stem>.musicxml` is the PD edition **clip excerpt** (whole movement when the take covers it); performance dump: `<stem>_transcribed.musicxml`.
 
 **Open in MuseScore after identify:**
 
@@ -188,7 +188,7 @@ python -m cello_note_detector --list-catalog
 python -m cello_note_detector --search-catalog dallabaco
 ```
 
-Add any PD edition:
+Add any PD edition (MusicXML already available):
 
 ```bash
 python scripts/add_catalog_piece.py \
@@ -196,9 +196,33 @@ python scripts/add_catalog_piece.py \
   --title "…" --composer "…" --license "Public Domain"
 ```
 
+**PDF-only IMSLP** (engraved typeset preferred — reject manuscripts):
+
+```bash
+# 1) Fetch a single-movement engraved PDF (Hamrefors Caprice No.2 example)
+python scripts/fetch_imslp_score.py \
+  --work-url "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)" \
+  --prefer pdf --imslp-id 618567 --substring Caprice_No._2 \
+  -o /tmp/caprice2.pdf
+
+# 2) Audiveris OMR → MusicXML (requires Audiveris 5.x)
+python scripts/pdf_to_musicxml.py /tmp/caprice2.pdf -o /tmp/caprice2_omr --fingerprint
+
+# 3) Register in the extensible catalog (any cello PD piece)
+python scripts/add_catalog_piece.py \
+  --id dallabaco_capriccio2 \
+  --musicxml /tmp/caprice2_omr/caprice2.musicxml \
+  --title "Dall'Abaco Capriccio No.2 in G minor" \
+  --composer "Joseph Marie Clément Dall'Abaco" \
+  --edition "Hamrefors IMSLP #618567 via Audiveris OMR" \
+  --key "G minor" --typical-duration-sec 176 --min-confidence 0.35
+```
+
+With `--discover`, PDF-only seeds in `discovery_index.json` (`omr_pdf: true`) fetch the engraved PDF and run Audiveris automatically when the piece is not already local.
+
 | Outcome | Primary `<stem>.musicxml` | Also written | JSON |
 |---------|---------------------------|--------------|------|
-| Confident catalog/discovery MATCH | **Verbatim PD edition MusicXML** | `*_transcribed.musicxml` | `score_kind=verbatim_pd_edition` |
+| Confident catalog/discovery MATCH | **PD edition clip** (full movement if take covers it) | `*_transcribed.musicxml` | `score_kind=verbatim_pd_edition` or `clip_excerpt_pd_edition` |
 | No match / low confidence | Audio transcription | — | `fallback=audio_transcription` |
 | Default (no `--identify`) | Transcription | — | no `identification` block |
 
@@ -259,5 +283,6 @@ outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 - Key is inferred from a duration-weighted pitch-class histogram (Krumhansl–Schmuckler). Sparse or heavily chromatic clips can pick the wrong mode/tonic; use `--key` to override. Filenames are never consulted.
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
 - MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events) unless song ID attaches a **catalog reference** score. It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm for transcription exports (they no-op with a warning under `--skip-rhythm`).
-- Song ID is a **small local catalog** matcher (window accuracy + LCS; ±1 octave). It is not a general music-recognition service. Only PD sources are shipped; commercial editions are out of scope. Unknown solos always fall back to transcription.
+- Song ID is a **small local catalog** matcher (window accuracy + contiguous runs; ±1 octave). It is not a general music-recognition service. Only PD sources are shipped; commercial editions are out of scope. Unknown solos always fall back to transcription.
+- **PDF OMR (Audiveris):** best on clean engraved single-movement PDFs. Manuscripts / handwritten scans are rejected by default. Dense tenor-clef cello writing and grace notes can still mis-read — spot-check MuseScore. Caprices demo: Caprice No.2 PDF→MusicXML works; live pitch MATCH on `clement-caprices.wav` may still soft-likely + transcription until fingerprinting improves (ETA honesty: Caprices OMR path first; reliable any-piece ID is longer).
 - Out of scope for this milestone: video / fingerings / bowings, full Elgar concerto catalog, website `/transcribe` backend, MERT fine-tuning.

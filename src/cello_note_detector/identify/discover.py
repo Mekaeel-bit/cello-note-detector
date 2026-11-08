@@ -46,7 +46,7 @@ _HOSTS = ("ks15", "ks7", "ks9", "s9", "ca1")
 
 @dataclass
 class DiscoveryCandidate:
-    """One remote PD work that *might* have a fetchable MusicXML/MXL/MIDI."""
+    """One remote PD work that *might* have a fetchable MusicXML/MXL/MIDI/PDF."""
 
     id: str
     title: str
@@ -55,8 +55,13 @@ class DiscoveryCandidate:
     imslp_work: str | None = None
     musicxml_urls: list[str] = field(default_factory=list)
     midi_urls: list[str] = field(default_factory=list)
+    pdf_urls: list[str] = field(default_factory=list)
     imslp_mxl_id: str | None = None
+    imslp_pdf_id: str | None = None
     imslp_prefer: str = "mxl"
+    imslp_substring: str | None = None
+    pdf_quality: str = "engraved_typeset"
+    omr_pdf: bool = False
     key: str | None = None
     typical_duration_sec: float | None = None
     notes: str = ""
@@ -98,10 +103,17 @@ def load_discovery_index(
                 imslp_work=raw.get("imslp_work"),
                 musicxml_urls=list(raw.get("musicxml_urls") or []),
                 midi_urls=list(raw.get("midi_urls") or []),
+                pdf_urls=list(raw.get("pdf_urls") or []),
                 imslp_mxl_id=(
                     str(raw["imslp_mxl_id"]) if raw.get("imslp_mxl_id") else None
                 ),
+                imslp_pdf_id=(
+                    str(raw["imslp_pdf_id"]) if raw.get("imslp_pdf_id") else None
+                ),
                 imslp_prefer=str(raw.get("imslp_prefer") or "mxl"),
+                imslp_substring=raw.get("imslp_substring") or raw.get("substring"),
+                pdf_quality=str(raw.get("pdf_quality") or "engraved_typeset"),
+                omr_pdf=bool(raw.get("omr_pdf") or raw.get("imslp_prefer") == "pdf"),
                 key=raw.get("key"),
                 typical_duration_sec=(
                     float(raw["typical_duration_sec"])
@@ -153,6 +165,7 @@ def _fetch_imslp_from_work(
     prefer: str,
     imslp_id: str | None,
     dest: Path,
+    substring: str | None = None,
 ) -> tuple[Path, str]:
     """Minimal IMSLP work-page → CDN fetch (same pattern as fetch_imslp_score.py)."""
     html = _http_get(work_url).decode("utf-8", "replace")
@@ -174,8 +187,45 @@ def _fetch_imslp_from_work(
         links.append((m.group(1), m.group(2), urllib.parse.unquote(m.group(3))))
     prefer = prefer.lower().lstrip(".")
     candidates = [c for c in links if c[2].lower().endswith("." + prefer)]
+    if substring:
+        sub = substring.lower()
+        filtered = [c for c in candidates if sub in c[2].lower()]
+        if filtered:
+            candidates = filtered
     if not candidates:
         raise RuntimeError(f"No .{prefer} files on IMSLP work page")
+
+    # For PDFs, prefer engraved single-movement filenames over complete books.
+    if prefer == "pdf":
+        from .omr import choose_best_pdf
+
+        # Score by filename only (bytes not yet downloaded).
+        class _NamePath:
+            def __init__(self, name: str):
+                self.name = name
+                self.suffix = Path(name).suffix
+
+            def is_file(self) -> bool:
+                return True
+
+            def stat(self):  # noqa: ANN001
+                class S:
+                    st_size = 50_000
+
+                return S()
+
+        ranked = choose_best_pdf(
+            [_NamePath(c[2]) for c in candidates],
+            title_hint=substring,
+            allow_manuscript=False,
+            min_score=0.2,
+        )
+        if ranked is not None:
+            want = ranked[0].name
+            for c in candidates:
+                if c[2] == want:
+                    candidates = [c] + [x for x in candidates if x != c]
+                    break
 
     chosen = candidates[0]
     if imslp_id:
@@ -200,23 +250,50 @@ def _fetch_imslp_from_work(
             except Exception as exc:  # noqa: BLE001
                 last_err = exc
                 continue
-            if not _looks_like_score_bytes(data):
+            if prefer == "pdf":
+                if not data.startswith(b"%PDF"):
+                    continue
+            elif not _looks_like_score_bytes(data):
                 continue
-            if data[:4] == b"%PDF" and prefer != "pdf":
+            elif data[:4] == b"%PDF" and prefer != "pdf":
                 continue
             dest.write_bytes(data)
             return dest, url
     raise RuntimeError(f"IMSLP CDN fetch failed: {last_err}")
 
 
+def _omr_pdf_to_entry_file(
+    pdf_path: Path,
+    *,
+    cache_dir: Path,
+    stem: str,
+) -> tuple[Path, dict[str, Any]]:
+    """Convert an engraved PDF to MusicXML via Audiveris; return MusicXML path."""
+    from .omr import pdf_to_musicxml
+
+    omr_dir = cache_dir / "omr"
+    omr_dir.mkdir(parents=True, exist_ok=True)
+    result = pdf_to_musicxml(pdf_path, omr_dir, stem=stem)
+    if result.status != "ok" or not result.musicxml_path:
+        raise RuntimeError(f"OMR failed: {result.status} — {result.detail}")
+    return Path(result.musicxml_path), result.to_dict()
+
+
 def fetch_discovery_candidate(
     candidate: DiscoveryCandidate,
     *,
     cache_dir: Path,
+    enable_omr: bool = True,
 ) -> DiscoveryAttempt:
-    """Try to download a machine-readable PD score for ``candidate``."""
+    """Try to download a machine-readable PD score for ``candidate``.
+
+    Order: direct MusicXML → IMSLP MXL/MusicXML → engraved PDF + Audiveris OMR
+    → MIDI (fingerprint only). PDF OMR prefers single-movement engraved
+    typesets (Hamrefors Caprice No.2) over complete-collection / manuscript PDFs.
+    """
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
+    last = "no sources"
 
     # 1) Direct MusicXML / MXL URLs
     for url in candidate.musicxml_urls:
@@ -234,35 +311,20 @@ def fetch_discovery_candidate(
         except Exception as exc:  # noqa: BLE001
             last = f"musicxml_url failed: {exc}"
     else:
-        last = "no musicxml_urls"
+        if not candidate.musicxml_urls:
+            last = "no musicxml_urls"
 
-    # 2) MIDI URLs (fingerprint / last-resort edition proxy)
-    for url in candidate.midi_urls:
-        dest = cache_dir / f"{candidate.id}.mid"
-        try:
-            _download_url(url, dest)
-            return DiscoveryAttempt(
-                candidate_id=candidate.id,
-                status="fetched_midi_only",
-                detail=(
-                    "Got MIDI (fingerprint usable); MusicXML edition still missing "
-                    "— attach requires MusicXML/MXL for verbatim PD export"
-                ),
-                fetched_path=str(dest),
-                source_url=url,
-            )
-        except Exception as exc:  # noqa: BLE001
-            last = f"midi_url failed: {exc}"
-
-    # 3) IMSLP work page discovery
-    if candidate.imslp_work:
-        dest = cache_dir / f"{candidate.id}.{candidate.imslp_prefer}"
+    # 2) IMSLP work page — prefer MXL/MusicXML when listed
+    prefer = (candidate.imslp_prefer or "mxl").lower()
+    if candidate.imslp_work and prefer in {"mxl", "musicxml", "xml"}:
+        dest = cache_dir / f"{candidate.id}.{prefer}"
         try:
             path, url = _fetch_imslp_from_work(
                 candidate.imslp_work,
-                prefer=candidate.imslp_prefer,
+                prefer=prefer,
                 imslp_id=candidate.imslp_mxl_id,
                 dest=dest,
+                substring=candidate.imslp_substring,
             )
             return DiscoveryAttempt(
                 candidate_id=candidate.id,
@@ -272,16 +334,88 @@ def fetch_discovery_candidate(
                 source_url=url,
             )
         except Exception as exc:  # noqa: BLE001
-            last = f"imslp fetch failed: {exc}"
+            last = f"imslp {prefer} fetch failed: {exc}"
+
+    # 3) Engraved PDF → Audiveris OMR → MusicXML (PDF-only IMSLP Caprices etc.)
+    want_pdf_omr = enable_omr and (
+        candidate.omr_pdf
+        or bool(candidate.pdf_urls)
+        or bool(candidate.imslp_pdf_id)
+        or prefer == "pdf"
+    )
+    if want_pdf_omr:
+        pdf_dest = cache_dir / f"{candidate.id}.pdf"
+        pdf_url: str | None = None
+        got_pdf = False
+        if candidate.pdf_urls:
+            try:
+                data = _http_get(candidate.pdf_urls[0])
+                if not data.startswith(b"%PDF"):
+                    raise RuntimeError("URL did not return PDF bytes")
+                pdf_dest.write_bytes(data)
+                pdf_url = candidate.pdf_urls[0]
+                got_pdf = True
+            except Exception as exc:  # noqa: BLE001
+                last = f"pdf_url failed: {exc}"
+        if not got_pdf and candidate.imslp_work:
+            try:
+                path, pdf_url = _fetch_imslp_from_work(
+                    candidate.imslp_work,
+                    prefer="pdf",
+                    imslp_id=candidate.imslp_pdf_id,
+                    dest=pdf_dest,
+                    substring=candidate.imslp_substring,
+                )
+                pdf_dest = path
+                got_pdf = True
+            except Exception as exc:  # noqa: BLE001
+                last = f"pdf fetch failed: {exc}"
+
+        if got_pdf and pdf_dest.is_file():
+            try:
+                xml_path, omr_meta = _omr_pdf_to_entry_file(
+                    pdf_dest, cache_dir=cache_dir, stem=candidate.id
+                )
+                return DiscoveryAttempt(
+                    candidate_id=candidate.id,
+                    status="fetched",
+                    detail=f"pdf_omr:{omr_meta.get('detail', 'audiveris')}",
+                    fetched_path=str(xml_path),
+                    source_url=pdf_url or str(pdf_dest),
+                )
+            except Exception as exc:  # noqa: BLE001
+                last = f"pdf_omr failed: {exc}"
+
+    # 4) MIDI URLs (fingerprint / last-resort edition proxy)
+    for url in candidate.midi_urls:
+        dest = cache_dir / f"{candidate.id}.mid"
+        try:
+            _download_url(url, dest)
             return DiscoveryAttempt(
                 candidate_id=candidate.id,
-                status="unavailable",
+                status="fetched_midi_only",
                 detail=(
-                    f"{last}. Many IMSLP cello Caprices are PDF-only; "
-                    "bundle MusicXML via scripts/add_catalog_piece.py when you "
-                    "have a PD/CC edition."
+                    "Got MIDI (fingerprint usable); MusicXML edition still missing "
+                    "— attach requires MusicXML/MXL for verbatim PD export "
+                    "(or PDF+OMR when Audiveris is installed)"
                 ),
+                fetched_path=str(dest),
+                source_url=url,
             )
+        except Exception as exc:  # noqa: BLE001
+            last = f"midi_url failed: {exc}"
+
+    if candidate.imslp_work:
+        return DiscoveryAttempt(
+            candidate_id=candidate.id,
+            status="unavailable",
+            detail=(
+                f"{last}. PDF-only IMSLP works need Audiveris for OMR "
+                "(scripts/pdf_to_musicxml.py) or a bundled MusicXML via "
+                "scripts/add_catalog_piece.py. Prefer engraved single-movement "
+                "PDFs, not manuscripts or complete Caprices books."
+            ),
+        )
 
     return DiscoveryAttempt(
         candidate_id=candidate.id,

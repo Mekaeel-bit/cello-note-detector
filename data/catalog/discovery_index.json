@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "description": "Remote PD discovery seeds for Shazam-like identify. Local catalog is always tried first. These entries are NOT pre-attached scores — a live fetch only happens on local miss when --discover is on. PDF-only IMSLP works remain discoverable for provenance but cannot attach MusicXML until a PD/CC MusicXML URL is added.",
+  "version": 2,
+  "description": "Remote PD discovery seeds for Shazam-like identify. Local catalog is always tried first. These entries are NOT pre-attached scores — a live fetch only happens on local miss when --discover is on. PDF-only IMSLP works set omr_pdf=true (Audiveris) and prefer engraved single-movement PDFs (never manuscripts / complete Caprices books).",
   "candidates": [
     {
       "id": "bwv1007_prelude_remote",
@@ -33,10 +33,15 @@
       "composer": "Joseph Marie Clément Dall'Abaco",
       "license": "CC BY-SA 4.0",
       "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "imslp_pdf_id": "618566",
+      "imslp_prefer": "pdf",
+      "imslp_substring": "Caprice_No._1",
+      "omr_pdf": true,
+      "pdf_quality": "engraved_typeset",
       "key": "C minor",
       "typical_duration_sec": 190.0,
       "musicxml_urls": [],
-      "notes": "IMSLP is PDF-only for Caprices. Local catalog ships bachwrotewhat CC BY-SA MusicXML as dallabaco_capriccio1. Not Clementi."
+      "notes": "IMSLP PDF-only (Hamrefors Caprice No.1 #618566). OMR via Audiveris when not in local catalog. Prefer Caprice_No._1.pdf over Complete Caprices. Not Clementi."
     },
     {
       "id": "dallabaco_capriccio2_remote",
@@ -44,9 +49,14 @@
       "composer": "Joseph Marie Clément Dall'Abaco",
       "license": "Public Domain",
       "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "imslp_pdf_id": "618567",
+      "imslp_prefer": "pdf",
+      "imslp_substring": "Caprice_No._2",
+      "omr_pdf": true,
+      "pdf_quality": "engraved_typeset",
       "key": "G minor",
       "typical_duration_sec": 176.0,
-      "notes": "Duration ~2:50–3:00. Local dallabaco_capriccio2 from LilyPond. IMSLP PDF-only (#618567)."
+      "notes": "Duration ~2:50–3:00. Hamrefors engraved Caprice No.2 PDF #618567 → Audiveris OMR. Prefer per-caprice PDF (never Complete_Caprices.pdf). Local dallabaco_capriccio2 preferred when bundled."
     }
   ]
 }

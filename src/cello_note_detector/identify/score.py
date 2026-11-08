@@ -9,7 +9,11 @@ from typing import Any
 
 from .catalog import CatalogEntry
 from .match import IdentificationResult
-from .musicxml_edition import copy_edition_musicxml, estimate_movements_by_duration
+from .musicxml_edition import (
+    estimate_movements_by_duration,
+    resolve_clip_note_span,
+    write_match_musicxml,
+)
 
 
 def _likely_from_duration_key(
@@ -145,11 +149,50 @@ def attach_catalog_score(
 
     if export_musicxml:
         xml_path = output_dir / f"{stem}.musicxml"
-        written = copy_edition_musicxml(entry.edition_musicxml, xml_path)
+        # MATCH must ship only the played clip span (e.g. Capriccio No.2),
+        # never an entire Caprices collection. Prefer per-movement editions;
+        # when the hyp is a mid-piece excerpt, trim measures to that span.
+        span = None
+        if identification.best is not None:
+            span = resolve_clip_note_span(
+                ref_notes=int(identification.best.ref_notes or entry.num_notes),
+                hyp_notes=int(identification.best.hyp_notes or 0),
+                window_offset=int(identification.best.window_offset or 0),
+                window_mode=str(identification.best.window_mode or ""),
+                audio_duration_sec=float(result.get("duration_sec") or 0.0) or None,
+                typical_duration_sec=entry.typical_duration_sec,
+            )
+        start_n = span[0] if span else None
+        end_n = span[1] if span else None
+        written, score_kind = write_match_musicxml(
+            entry.edition_musicxml,
+            xml_path,
+            start_note=start_n,
+            end_note=end_n,
+        )
         result["_musicxml_path"] = str(written)
         result["identification"]["score_musicxml"] = str(written)
-        result["identification"]["score_kind"] = "verbatim_pd_edition"
-        result["identification"]["score_note_count"] = entry.num_notes
+        result["identification"]["score_kind"] = score_kind
+        if span is not None:
+            result["identification"]["clip_excerpt"] = {
+                "start_note": start_n,
+                "end_note": end_n,
+                "ref_notes": entry.num_notes,
+                "note": (
+                    "Exported only the clip-aligned measures from the PD "
+                    "edition (not a multi-work collection)."
+                ),
+            }
+            result["identification"]["score_note_count"] = max(0, end_n - start_n)
+        else:
+            result["identification"]["score_note_count"] = entry.num_notes
+            result["identification"]["clip_excerpt"] = {
+                "full_movement": True,
+                "note": (
+                    "Clip covers this single movement; exported the whole "
+                    "movement MusicXML (still not a Caprices collection)."
+                ),
+            }
 
     if export_midi and entry.midi_path and entry.midi_path.is_file():
         # Prefer publisher MIDI when present; otherwise skip (don't invent MIDI).

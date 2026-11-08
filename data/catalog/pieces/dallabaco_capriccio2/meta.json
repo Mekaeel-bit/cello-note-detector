@@ -2,8 +2,8 @@
   "id": "dallabaco_capriccio2",
   "title": "Dall'Abaco Capriccio No.2 in G minor",
   "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
-  "edition": "LilyPond capriccio_secondo.ly (babysnakes) \u2192 MusicXML",
-  "license": "Public Domain (composition); engraving as published in source repo",
+  "edition": "Hamrefors 2020 IMSLP #618567 engraved PDF \u2192 Audiveris 5.11 OMR",
+  "license": "Public Domain (composition); Hamrefors engraving non-commercial copying welcome",
   "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
   "key": "G minor",
   "min_confidence": 0.35,
@@ -12,11 +12,13 @@
   "typical_duration_sec": 176.0,
   "ornaments": {
     "slurs": 0,
-    "trills_or_waves": 0,
-    "ties": 0,
+    "trills_or_waves": 2,
+    "ties": 2,
     "has_slurs": false,
-    "has_trills": false
+    "has_trills": true
   },
-  "num_notes": 466,
-  "num_measures": 32
+  "num_notes": 480,
+  "num_measures": 34,
+  "omr_engine": "Audiveris 5.11.0",
+  "omr_source_pdf": "data/catalog/pieces/dallabaco_capriccio2/source/omr/IMSLP618567-Hamrefors-Caprice_No_2.pdf"
 }
