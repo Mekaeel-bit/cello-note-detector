@@ -16,14 +16,19 @@ pip install -r requirements-video.txt
 python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.mp4 \
   -o outputs/video --overlay --max-frames 180
 
-# AV fusion (recommended clip — has audible cello audio):
+# AV fusion + MusicXML (recommended clip — has audible cello audio):
 python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
-  -o outputs/video --fuse --overlay --max-frames 180
+  -o outputs/video --fuse --musicxml --overlay --max-frames 180
 # requires ffmpeg on PATH; writes beside -o:
 #   <stem>_audio.wav          (PCM for pyin; play this if the MP4 is silent in your player)
 #   <stem>_video_only.mp4     (video stream without audio)
 #   <stem>_fused_timeline.json  (includes audio_path / video_path / video_only_path)
+#   <stem>_fused.musicxml     (fingerings + LH position marks)
 # Fails loudly if extracted WAV RMS is near silence.
+
+# Website (same pipeline):
+#   python -m cello_note_detector.web
+#   open http://127.0.0.1:8765/ → Video → Score → pick the MsPho clip
 
 # Sheet music from fusion (fingerings + left-hand position) — FULL CLIP (no --max-frames):
 python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \

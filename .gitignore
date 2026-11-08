@@ -9,6 +9,7 @@ dist/
 build/
 outputs/*
 !outputs/.gitkeep
+outputs/web_jobs/
 *.npy
 .pytest_cache/
 

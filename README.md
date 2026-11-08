@@ -136,6 +136,35 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
+## Website: video → MusicXML (fingerings + position)
+
+Local UI that uploads a cello video (mp4 / webm / mov), runs the AV fuse pipeline, and returns bass-clef MusicXML with fingerings and left-hand position marks. Song-ID / IMSLP catalog matching is **paused** — every job uses fused transcription MusicXML.
+
+```bash
+pip install -r requirements.txt -r requirements-video.txt
+pip install -e .
+# ffmpeg must be on PATH
+python -m cello_note_detector.web
+# open http://127.0.0.1:8765/
+```
+
+**Demo (recommended clip):**
+
+1. Start the server as above.
+2. In the **Video → Score** tab, choose `data/video/clips/mspho_a_major_3oct_front.mp4`.
+3. Leave **Fast demo** checked (`--max-frames 180`) for a quicker first run; uncheck for a full-clip score.
+4. Click **Make Score**, wait for status → **Download MusicXML** (or view the in-browser OSMD render). Overlay stills appear when enabled.
+
+Equivalent CLI (same pipeline the site runs):
+
+```bash
+python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
+  -o outputs/video --fuse --musicxml --overlay --max-frames 180
+# Open outputs/video/mspho_a_major_3oct_front_fused.musicxml in MuseScore
+```
+
+Job artifacts land under `outputs/web_jobs/<job_id>/`.
+
 ## Video fingerings / bowings sandbox
 
 Bundled front-facing WMEA scale/etude clips (YouTube originals; IA mirrors — see [`data/video/SOURCES.md`](data/video/SOURCES.md)):
@@ -159,7 +188,7 @@ python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_fro
   -o outputs/video --overlay --align-audio
 ```
 
-Writes `<stem>_video_timeline.json` (events + per-frame samples), with `--fuse` also `<stem>_fused_timeline.json` + sample preview, and optional overlay JPEGs. Models download on first run into `data/video/models/`.
+Writes `<stem>_video_timeline.json` (events + per-frame samples), with `--fuse` also `<stem>_fused_timeline.json` + sample preview, optional overlay JPEGs, and with `--musicxml` a `<stem>_fused.musicxml`. Models download on first run into `data/video/models/`.
 
 ## Bach Prelude accuracy sandbox
 
@@ -198,7 +227,8 @@ src/cello_note_detector/
   audio/          # load, pyin + onsets, MERT embed
   decode/         # note events + rhythm (tempo, key, quantize, rests)
   export/         # MusicXML + MIDI writers
-  video/          # MediaPipe fingering/bow sandbox CLI
+  video/          # MediaPipe fingering/bow sandbox + fuse/MusicXML CLI
+  web/            # local upload UI → fused MusicXML (python -m cello_note_detector.web)
   cli.py          # audio entrypoint
 scripts/
   generate_multi_note_phrases.py
@@ -219,4 +249,4 @@ outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
 - MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events). It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
 - Video sandbox: MediaPipe finger/bow proxies only; no string ID, shift detection, or engraved bowing marks yet. Demo clips are YouTube-sourced (ToS) via IA mirrors — see `data/video/SOURCES.md`.
-- Out of scope here: song-ID / IMSLP catalog work, website `/transcribe` backend, MERT fine-tuning.
+- Out of scope here: song-ID / IMSLP catalog rebuild, MERT fine-tuning. Website video→score is wired; optional audio `/transcribe` is not.
