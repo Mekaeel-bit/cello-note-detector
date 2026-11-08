@@ -40,7 +40,7 @@
       </direction>
       <direction placement="above">
         <direction-type>
-          <words font-style="italic">II</words>
+          <words font-style="italic">I</words>
         </direction-type>
       </direction>
       <note>
@@ -65,11 +65,6 @@
         <type>half</type>
         <dot/>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">I</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>A</step>
@@ -93,11 +88,6 @@
         <voice>1</voice>
         <type>eighth</type>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">II</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>C</step>
@@ -120,11 +110,6 @@
         <voice>1</voice>
         <type>eighth</type>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">I</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>A</step>
@@ -141,11 +126,6 @@
           </technical>
         </notations>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">II</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>C</step>
@@ -164,11 +144,6 @@
       </note>
     </measure>
     <measure number="3">
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">I</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>B</step>
@@ -214,11 +189,6 @@
           </technical>
         </notations>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">II</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>C</step>
@@ -237,11 +207,6 @@
       </note>
     </measure>
     <measure number="4">
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">I</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>D</step>
@@ -252,8 +217,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>2</string>
+            <fingering>4</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -288,11 +253,6 @@
           </technical>
         </notations>
       </note>
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">II</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>G</step>
@@ -311,11 +271,6 @@
       </note>
     </measure>
     <measure number="5">
-      <direction placement="above">
-        <direction-type>
-          <words font-style="italic">I</words>
-        </direction-type>
-      </direction>
       <note>
         <pitch>
           <step>A</step>
@@ -326,8 +281,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>4</fingering>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -341,7 +296,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -357,7 +312,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>2</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -372,7 +327,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>3</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -389,11 +344,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">II</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>F</step>
@@ -405,7 +365,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>3</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -421,11 +381,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">III</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>A</step>
@@ -436,13 +401,18 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
     </measure>
     <measure number="7">
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">IV</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>B</step>
@@ -453,11 +423,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">thumb</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>C</step>
@@ -469,7 +444,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>2</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -484,7 +459,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>3</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -499,13 +474,18 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
     </measure>
     <measure number="8">
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">high</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>F</step>
@@ -517,7 +497,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -533,7 +513,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -555,7 +535,7 @@
         <dot/>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -574,7 +554,7 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -606,7 +586,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -621,7 +601,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>4</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -636,7 +616,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>3</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -655,7 +635,7 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
+            <fingering>2</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -686,7 +666,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -701,11 +681,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">IV</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>G</step>
@@ -717,7 +702,7 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>2</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -736,7 +721,7 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -767,11 +752,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">III</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>D</step>
@@ -782,11 +772,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">II</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>C</step>
@@ -798,11 +793,16 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <words font-style="italic">I</words>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>B</step>
@@ -816,7 +816,7 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
+            <fingering>1</fingering>
             <string>1</string>
           </technical>
         </notations>
@@ -862,8 +862,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>3</fingering>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -878,8 +878,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>2</fingering>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -893,8 +893,8 @@
         <type>eighth</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>1</fingering>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -910,8 +910,8 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>1</fingering>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -942,7 +942,7 @@
         <notations>
           <technical>
             <fingering>0</fingering>
-            <string>1</string>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -957,7 +957,7 @@
         <notations>
           <technical>
             <fingering>0</fingering>
-            <string>1</string>
+            <string>2</string>
           </technical>
         </notations>
       </note>
@@ -972,8 +972,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>3</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -987,8 +987,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>2</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -1004,8 +1004,8 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>1</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -1036,8 +1036,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>3</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -1051,8 +1051,8 @@
         <type>quarter</type>
         <notations>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>2</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>
@@ -1068,8 +1068,8 @@
         <notations>
           <tied type="start"/>
           <technical>
-            <fingering>0</fingering>
-            <string>1</string>
+            <fingering>1</fingering>
+            <string>3</string>
           </technical>
         </notations>
       </note>

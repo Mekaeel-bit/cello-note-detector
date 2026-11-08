@@ -47,7 +47,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     p.add_argument("-o", "--output-dir", default=str(DEFAULT_OUT))
     p.add_argument("--sample-every", type=int, default=2, help="Process every Nth frame")
-    p.add_argument("--max-frames", type=int, default=None, help="Cap processed frames")
+    p.add_argument(
+        "--max-frames",
+        type=int,
+        default=None,
+        help=(
+            "Optional cap on vision frames (demo/debug only). "
+            "Omit for a full-clip run — audio notes are always fused for the whole file."
+        ),
+    )
     p.add_argument("--overlay", action="store_true", help="Write annotated JPEG frames")
     p.add_argument("--overlay-every", type=int, default=10)
     p.add_argument(
