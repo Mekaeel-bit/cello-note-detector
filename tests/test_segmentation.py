@@ -101,8 +101,54 @@ def test_octave_correct_snaps_open_g_harmonic():
     seg = 0.3 * np.sin(2 * np.pi * 98.0 * t) + 0.9 * np.sin(2 * np.pi * 196.0 * t)
     audio = seg.astype(np.float32)
     events = [_ev(55, 0.0, 0.25)]  # mislabeled G3
-    fixed = correct_cello_octave_errors(events, audio, sr=sr, half_ratio=0.15)
+    fixed, locked = correct_cello_octave_errors(
+        events, audio, sr=sr, half_ratio=0.15, double_ratio=99.0
+    )
     assert len(fixed) == 1 and fixed[0].midi == 43
+    assert locked == [True]
+
+
+def test_octave_correct_lifts_subharmonic_b():
+    """Strong energy at 2·f0 should lift B2 → B3 (not an open string)."""
+    import numpy as np
+
+    from cello_note_detector.audio.pitch_baseline import correct_cello_octave_errors
+
+    sr = 16_000
+    t = np.arange(int(0.25 * sr), dtype=np.float64) / sr
+    f_b2 = float(librosa.midi_to_hz(47))
+    # Reported as B2 but almost all energy at B3.
+    seg = 0.15 * np.sin(2 * np.pi * f_b2 * t) + 1.0 * np.sin(
+        2 * np.pi * (2 * f_b2) * t
+    )
+    audio = seg.astype(np.float32)
+    events = [_ev(47, 0.0, 0.25, conf=0.15)]
+    fixed, locked = correct_cello_octave_errors(
+        events, audio, sr=sr, half_ratio=0.15, double_ratio=3.0, max_conf_up=0.40
+    )
+    assert len(fixed) == 1 and fixed[0].midi == 59
+    assert locked == [True]
+
+
+def test_octave_correct_does_not_lift_open_string():
+    """Open D3 with a strong 2nd harmonic must not jump to D4."""
+    import numpy as np
+
+    from cello_note_detector.audio.pitch_baseline import correct_cello_octave_errors
+
+    sr = 16_000
+    t = np.arange(int(0.25 * sr), dtype=np.float64) / sr
+    f_d3 = float(librosa.midi_to_hz(50))
+    seg = 0.4 * np.sin(2 * np.pi * f_d3 * t) + 1.0 * np.sin(
+        2 * np.pi * (2 * f_d3) * t
+    )
+    audio = seg.astype(np.float32)
+    events = [_ev(50, 0.0, 0.25, conf=0.10)]
+    fixed, locked = correct_cello_octave_errors(
+        events, audio, sr=sr, double_ratio=2.0, max_conf_up=0.40
+    )
+    assert len(fixed) == 1 and fixed[0].midi == 50
+    assert locked == [False]
 
 
 def test_trim_trailing_low_confidence():
@@ -133,3 +179,17 @@ def test_resolve_octave_ambiguities_lifts_low_conf_under_melody():
     notes[3] = _ev(45, 0.6, 0.2, conf=0.05)
     fixed = resolve_octave_ambiguities(notes, lock_conf=0.20)
     assert [e.midi for e in fixed] == [43, 50, 59, 57, 59]
+
+
+def test_resolve_respects_spectral_locked_mask():
+    """Spectrally lifted B3 must stay even if neighbors pull low."""
+    from cello_note_detector.audio.pitch_baseline import resolve_octave_ambiguities
+
+    notes = [
+        _ev(43, 0.0, 0.2, conf=0.05),
+        _ev(59, 0.2, 0.2, conf=0.05),  # would otherwise fall toward bass
+        _ev(43, 0.4, 0.2, conf=0.05),
+    ]
+    locked = [False, True, False]
+    fixed = resolve_octave_ambiguities(notes, lock_conf=0.20, locked=locked)
+    assert fixed[1].midi == 59
