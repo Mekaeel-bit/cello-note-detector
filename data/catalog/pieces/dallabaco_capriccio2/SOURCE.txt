@@ -1,12 +1,34 @@
 Joseph Marie Clément Dall'Abaco — Capriccio No.2 in G minor
 
-Edition MusicXML:
-  LilyPond transcription → MIDI → MusicXML
-  LilyPond source: https://github.com/babysnakes/Guiseppe-Maria-Dall-Abaco---11-Capricci
-  (capriccio_secondo.ly; based on a bought copy — machine-readable PD-style engraving)
+Edition MusicXML (MATCH attach):
+  IMSLP #618567 Hamrefors 2020 engraved PDF (Caprice_No._2.pdf, 2 pages)
+  → Audiveris 5.11 batch OMR → MusicXML
+  Prefer this single-movement engraved PDF over Complete_Caprices.pdf
+  or manuscripts. MATCH exports only the clip span (whole Caprice 2 when
+  the take covers the movement).
+
+OMR sidecars:
+  source/omr/IMSLP618567-Hamrefors-Caprice_No_2.pdf
+  source/omr/hamrefors_caprice2.mxl
+
+Optional LilyPond reference (fingerprint cross-check / MIDI):
+  source/capriccio_secondo.ly + .mid
+  https://github.com/babysnakes/Guiseppe-Maria-Dall-Abaco---11-Capricci
 
 IMSLP work:
   https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)
-  Hamrefors Caprice No.2 PDF #618567
+
+Rebuild:
+  python3 scripts/fetch_imslp_score.py \
+    --work-url "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)" \
+    --prefer pdf --imslp-id 618567 --substring Caprice_No._2 \
+    -o /tmp/caprice2.pdf
+  python3 scripts/pdf_to_musicxml.py /tmp/caprice2.pdf -o /tmp/caprice2_omr --fingerprint
+  python3 scripts/add_catalog_piece.py --id dallabaco_capriccio2 \
+    --musicxml /tmp/caprice2_omr/*.musicxml \
+    --title "Dall'Abaco Capriccio No.2 in G minor" \
+    --composer "Joseph Marie Clément Dall'Abaco" \
+    --edition "Hamrefors IMSLP #618567 via Audiveris OMR" \
+    --key "G minor" --typical-duration-sec 176 --min-confidence 0.35
 
 Typical duration ~2:50–3:00 (matches Teddy's clement-caprices.wav length).

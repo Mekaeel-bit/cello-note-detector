@@ -40,6 +40,7 @@ from cello_note_detector.identify import (
     identify_with_discovery,
     load_catalog,
     load_discovery_index,
+    promote_soft_catalog_match,
     search_catalog,
 )
 from cello_note_detector.identify.catalog import DEFAULT_CATALOG_PATH
@@ -234,6 +235,16 @@ def _process_one(
             discovery_path=discovery_path,
             cache_dir=output_dir / "_discovery_cache",
         )
+        # Caprices-style takes: pitch gates fail but duration+key uniquely
+        # pick a catalog movement with an OMR/IMSLP edition — promote to
+        # hard MATCH so MuseScore gets the edition, not garbage transcription.
+        if score_source != "transcribe" and not identification.matched:
+            identification = promote_soft_catalog_match(
+                identification,
+                catalog_entries if catalog_entries is not None else [],
+                duration_sec=duration_s,
+                key_name=str(key_name or ""),
+            )
         if score_source == "transcribe":
             # Still record match metadata, but keep transcription sheet output.
             identification.score_source = "transcribe"

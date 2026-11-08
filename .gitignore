@@ -11,6 +11,7 @@ outputs/*
 !outputs/.gitkeep
 *.npy
 .pytest_cache/
+*.mxl_extracted/
 
 # Hugging Face / torch caches (local)
 .cache/

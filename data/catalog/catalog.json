@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "description": "Extensible LOCAL (bundled) PD/CC cello MusicXML catalog. Bach, Gabrielli, and Dall'Abaco Caprices 1\u20132 are TEST entries only \u2014 not a closed list. These files ship in-repo; seeing them before --identify does NOT mean a live song ID already ran. MATCH copies the edition into outputs/. On miss, --discover can fetch remote PD seeds (discovery_index.json). Add pieces with scripts/add_catalog_piece.py.",
+  "description": "Extensible LOCAL (bundled) PD/CC cello MusicXML catalog. Bach, Gabrielli, and Dall'Abaco Caprices 1\u20132 are TEST entries only \u2014 not a closed list. Caprice 2 edition comes from IMSLP PDF\u2192Audiveris OMR (engraved Hamrefors). Files ship in-repo; seeing them before --identify does NOT mean a live song ID already ran. MATCH copies/excerpts the edition into outputs/. On miss, --discover can fetch remote PD seeds or PDF+OMR (discovery_index.json). Add pieces with scripts/add_catalog_piece.py / scripts/pdf_to_musicxml.py.",
   "default_min_confidence": 0.55,
   "entries": [
     {
@@ -49,16 +49,15 @@
       "id": "dallabaco_capriccio2",
       "title": "Dall'Abaco Capriccio No.2 in G minor",
       "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
-      "edition": "LilyPond capriccio_secondo.ly (babysnakes) \u2192 MusicXML",
-      "license": "Public Domain (composition); engraving as published in source repo",
+      "edition": "Hamrefors 2020 IMSLP #618567 engraved PDF \u2192 Audiveris 5.11 OMR",
+      "license": "Public Domain (composition); Hamrefors engraving non-commercial copying welcome",
       "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
       "key": "G minor",
       "min_confidence": 0.35,
       "edition_musicxml": "data/catalog/pieces/dallabaco_capriccio2/edition.musicxml",
       "fingerprint_json": "data/catalog/pieces/dallabaco_capriccio2/fingerprint.json",
       "typical_duration_sec": 176.0,
-      "match_notes": "Edition MusicXML from LilyPond\u2192MusicXML; fingerprint from LilyPond MIDI.",
-      "midi_path": "data/catalog/pieces/dallabaco_capriccio2/source/capriccio_secondo.mid"
+      "match_notes": "Fingerprint from Audiveris OMR of Hamrefors Caprice No.2 PDF (single movement). MATCH exports clip excerpt only."
     }
   ]
 }

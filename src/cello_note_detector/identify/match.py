@@ -57,11 +57,10 @@ class IdentificationResult:
             "reason": self.reason,
             "score_source": self.score_source,
             "catalog_size": len(self.candidates),
-            # Soft ranking never claims MATCH; helps UX when pitch gates fail
-            # but duration/key still point at a bundled PD edition.
             "ux_note": (
                 "Bundled data/catalog/pieces/* ship with the repo; "
-                "MATCH only when matched=true and score_kind=verbatim_pd_edition."
+                "MATCH when matched=true (pitch gates or strong duration+key "
+                "promote) and primary MusicXML is a PD edition / clip excerpt."
             ),
         }
         if self.entry is not None:
