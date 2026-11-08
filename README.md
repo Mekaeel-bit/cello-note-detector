@@ -148,6 +148,8 @@ python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.m
 # (clip has audible cello; requires ffmpeg on PATH)
 python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
   -o outputs/video --fuse --overlay --max-frames 180
+# Also writes outputs/video/mspho_a_major_3oct_front_audio.wav (+ _video_only.mp4);
+# fused JSON includes audio_path / video_path. Fails if WAV RMS is near silence.
 # optional rough AV sync without fusion
 python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \
   -o outputs/video --overlay --align-audio

@@ -1,6 +1,19 @@
 {
   "schema": "cello_av_fusion_v0",
   "source": "data/video/clips/mspho_a_major_3oct_front.mp4",
+  "audio_path": "outputs/video/mspho_a_major_3oct_front_audio.wav",
+  "video_path": "data/video/clips/mspho_a_major_3oct_front.mp4",
+  "video_only_path": "outputs/video/mspho_a_major_3oct_front_video_only.mp4",
+  "audio_alignment": {
+    "ok": true,
+    "method": "ffmpeg-extract + pyin",
+    "num_notes": 54,
+    "note": "Rough sync by shared clock; no AV drift correction.",
+    "rms": 1860.78,
+    "audio_path": "outputs/video/mspho_a_major_3oct_front_audio.wav",
+    "video_path": "data/video/clips/mspho_a_major_3oct_front.mp4",
+    "video_only_path": "outputs/video/mspho_a_major_3oct_front_video_only.mp4"
+  },
   "fusion": {
     "ok": true,
     "method": "pyin pitch \u2192 open-string/position hypotheses \u2229 left-hand curl/neck proxy; bow string from pitch",
@@ -10,8 +23,8 @@
       "D",
       "A"
     ],
-    "num_audio_notes": 55,
-    "num_fused_events": 49,
+    "num_audio_notes": 54,
+    "num_fused_events": 23,
     "limits": [
       "Hackathon fusion demo \u2014 not concert fingerings.",
       "String ID is the lowest-position pitch hypothesis re-ranked by hand height/curl.",
@@ -19,17 +32,11 @@
       "Bow direction stays wrist-velocity; sounding string comes from pitch, not stick segmentation."
     ]
   },
-  "audio_alignment": {
-    "ok": true,
-    "method": "ffmpeg-extract + pyin",
-    "num_notes": 55,
-    "note": "Rough sync by shared clock; no AV drift correction."
-  },
   "fused_notes_preview": [
     {
       "midi": 48,
       "note": "C3",
-      "onset": 0.064,
+      "onset": 0.0427,
       "offset": 0.1493,
       "confidence": 0.01,
       "string": "G",
@@ -47,65 +54,14 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 5,
-          "suggested_finger": 3,
-          "fusion_score": 3.05
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 12,
-          "suggested_finger": 4,
-          "fusion_score": 10.4
-        }
-      ]
-    },
-    {
-      "midi": 50,
-      "note": "D3",
-      "onset": 1.056,
-      "offset": 1.1413,
-      "confidence": 0.01,
-      "string": "D",
-      "bow_string": "D",
-      "position_band": "open",
-      "semitones_above_open": 0,
-      "fingering": {
-        "finger": 0,
-        "label": "open",
-        "confidence": 0.7,
-        "source": "pitch_open + no_curl"
-      },
-      "hypotheses": [
-        {
-          "string": "D",
-          "semitones_above_open": 0,
-          "suggested_finger": 0,
-          "fusion_score": -0.3
-        },
-        {
-          "string": "G",
-          "semitones_above_open": 7,
-          "suggested_finger": 4,
-          "fusion_score": 7.15
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 14,
-          "suggested_finger": 4,
-          "fusion_score": 14.5
-        }
-      ]
+      }
     },
     {
       "midi": 57,
       "note": "A3",
       "onset": 2.1973,
       "offset": 2.4427,
-      "confidence": 0.3485,
+      "confidence": 0.3406,
       "string": "A",
       "bow_string": "A",
       "position_band": "open",
@@ -121,27 +77,7 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "A",
-          "semitones_above_open": 0,
-          "suggested_finger": 0,
-          "fusion_score": 1.55
-        },
-        {
-          "string": "D",
-          "semitones_above_open": 7,
-          "suggested_finger": 4,
-          "fusion_score": 5.1
-        },
-        {
-          "string": "G",
-          "semitones_above_open": 14,
-          "suggested_finger": 4,
-          "fusion_score": 12.45
-        }
-      ]
+      }
     },
     {
       "midi": 49,
@@ -164,21 +100,7 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 6,
-          "suggested_finger": 3,
-          "fusion_score": 4.05
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 13,
-          "suggested_finger": 4,
-          "fusion_score": 11.4
-        }
-      ]
+      }
     },
     {
       "midi": 45,
@@ -201,28 +123,14 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 2,
-          "suggested_finger": 1,
-          "fusion_score": 1.45
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 9,
-          "suggested_finger": 4,
-          "fusion_score": 7.4
-        }
-      ]
+      }
     },
     {
       "midi": 49,
       "note": "C\u266f3",
       "onset": 4.1173,
       "offset": 4.9067,
-      "confidence": 0.6693,
+      "confidence": 0.6712,
       "string": "G",
       "bow_string": "G",
       "position_band": "mid",
@@ -238,28 +146,14 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 6,
-          "suggested_finger": 3,
-          "fusion_score": 4.05
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 13,
-          "suggested_finger": 4,
-          "fusion_score": 11.4
-        }
-      ]
+      }
     },
     {
       "midi": 47,
       "note": "B2",
       "onset": 4.9067,
       "offset": 5.6747,
-      "confidence": 0.5787,
+      "confidence": 0.5778,
       "string": "G",
       "bow_string": "G",
       "position_band": "low",
@@ -275,28 +169,14 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 4,
-          "suggested_finger": 2,
-          "fusion_score": 3.45
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 11,
-          "suggested_finger": 4,
-          "fusion_score": 9.4
-        }
-      ]
+      }
     },
     {
       "midi": 45,
       "note": "A2",
       "onset": 5.6747,
       "offset": 6.5493,
-      "confidence": 0.5321,
+      "confidence": 0.5327,
       "string": "G",
       "bow_string": "G",
       "position_band": "low",
@@ -312,21 +192,30 @@
           3,
           4
         ]
-      },
-      "hypotheses": [
-        {
-          "string": "G",
-          "semitones_above_open": 2,
-          "suggested_finger": 1,
-          "fusion_score": 1.45
-        },
-        {
-          "string": "C",
-          "semitones_above_open": 9,
-          "suggested_finger": 4,
-          "fusion_score": 7.4
-        }
-      ]
+      }
+    },
+    {
+      "midi": 47,
+      "note": "B2",
+      "onset": 6.592,
+      "offset": 7.296,
+      "confidence": 0.4716,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 4,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
     }
   ],
   "fused_events_preview": [
@@ -355,30 +244,6 @@
       "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
     },
     {
-      "t": 1.068,
-      "type": "fused_note",
-      "string": "D",
-      "finger": 0,
-      "fingering_label": "open",
-      "midi": 50,
-      "note": "D3",
-      "bow_direction": "up",
-      "confidence": 0.355,
-      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
-    },
-    {
-      "t": 1.134,
-      "type": "fused_note",
-      "string": "D",
-      "finger": 0,
-      "fingering_label": "open_preferred",
-      "midi": 50,
-      "note": "D3",
-      "bow_direction": "hold",
-      "confidence": 0.23,
-      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
-    },
-    {
       "t": 2.202,
       "type": "fused_note",
       "string": "A",
@@ -387,19 +252,7 @@
       "midi": 57,
       "note": "A3",
       "bow_direction": "hold",
-      "confidence": 0.399,
-      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
-    },
-    {
-      "t": 2.402,
-      "type": "fused_note",
-      "string": "A",
-      "finger": 0,
-      "fingering_label": "open_preferred",
-      "midi": 57,
-      "note": "A3",
-      "bow_direction": "down",
-      "confidence": 0.399,
+      "confidence": 0.395,
       "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
     },
     {
@@ -439,7 +292,7 @@
       "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
     },
     {
-      "t": 3.27,
+      "t": 3.337,
       "type": "fused_note",
       "string": "G",
       "finger": 1,
@@ -447,6 +300,18 @@
       "midi": 45,
       "note": "A2",
       "bow_direction": "down",
+      "confidence": 0.583,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 4.004,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 45,
+      "note": "A2",
+      "bow_direction": "hold",
       "confidence": 0.583,
       "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
     }

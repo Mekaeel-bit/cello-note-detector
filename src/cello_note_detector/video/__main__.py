@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from cello_note_detector.video.align_audio import attach_audio_notes
+from cello_note_detector.video.align_audio import SilentAudioError, attach_audio_notes
 from cello_note_detector.video.detect import analyze_video, write_timeline
 from cello_note_detector.video.fusion import fuse_timeline
 from cello_note_detector.video.models import DEFAULT_MODEL_DIR
@@ -59,8 +59,13 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help=(
             "Fuse pyin pitch with hand landmarks → string-aware fingering + bow string "
-            "(implies audio extract; writes *_fused_timeline.json)"
+            "(writes *_audio.wav, *_video_only.mp4, *_fused_timeline.json)"
         ),
+    )
+    p.add_argument(
+        "--no-video-only",
+        action="store_true",
+        help="With --fuse, skip writing <stem>_video_only.mp4 (still writes *_audio.wav)",
     )
     p.add_argument("--model-dir", default=str(DEFAULT_MODEL_DIR))
     args = p.parse_args(argv)
@@ -84,25 +89,53 @@ def main(argv: list[str] | None = None) -> None:
             overlay_every=args.overlay_every,
         )
         if args.fuse or args.align_audio:
-            result = attach_audio_notes(result, video)
+            try:
+                result = attach_audio_notes(
+                    result,
+                    video,
+                    out_dir=out_dir if args.fuse else None,
+                    write_splits=bool(args.fuse),
+                    write_video_only=bool(args.fuse) and not args.no_video_only,
+                    require_audible=bool(args.fuse),
+                )
+            except SilentAudioError as exc:
+                raise SystemExit(f"ERROR: {exc}") from exc
+            except FileNotFoundError as exc:
+                raise SystemExit(f"ERROR: {exc}") from exc
 
         out_json = out_dir / f"{video.stem}_video_timeline.json"
         write_timeline(result, out_json)
         n_ev = len(result.get("events") or [])
+        aa = result.get("audio_alignment") or {}
+        split_msg = ""
+        if aa.get("audio_path"):
+            split_msg = f" audio={aa['audio_path']}"
+            if aa.get("video_only_path"):
+                split_msg += f" video_only={aa['video_only_path']}"
+            if aa.get("rms") is not None:
+                split_msg += f" rms={aa['rms']}"
         print(
             f"  frames={result['frames_sampled']} events={n_ev} → {out_json}"
             + (f" overlay={vision_overlay}" if vision_overlay else "")
+            + split_msg
         )
 
         if args.fuse:
             fused = fuse_timeline(result)
+            # Carry explicit split paths onto the fused document.
+            for key in ("audio_path", "video_path", "video_only_path", "audio_alignment"):
+                if key in result:
+                    fused[key] = result[key]
             fused_json = out_dir / f"{video.stem}_fused_timeline.json"
             write_timeline(fused, fused_json)
-            # Compact sample for quick inspection (first few fused notes).
             sample_path = out_dir / f"{video.stem}_fused_sample.json"
             sample_doc = {
                 "schema": fused.get("schema"),
                 "source": fused.get("source"),
+                "audio_path": fused.get("audio_path"),
+                "video_path": fused.get("video_path"),
+                "video_only_path": fused.get("video_only_path"),
+                "audio_alignment": fused.get("audio_alignment"),
                 "fusion": fused.get("fusion"),
                 "fused_notes_preview": (fused.get("fused_notes") or [])[:12],
                 "fused_events_preview": (fused.get("fused_events") or [])[:20],
@@ -110,7 +143,12 @@ def main(argv: list[str] | None = None) -> None:
             sample_path.write_text(json.dumps(sample_doc, indent=2), encoding="utf-8")
             n_fn = len(fused.get("fused_notes") or [])
             n_fe = len(fused.get("fused_events") or [])
-            msg = f"  fused notes={n_fn} events={n_fe} → {fused_json} sample={sample_path}"
+            msg = (
+                f"  fused notes={n_fn} events={n_fe} → {fused_json} sample={sample_path}"
+                f" audio={fused.get('audio_path')} video={fused.get('video_path')}"
+            )
+            if fused.get("video_only_path"):
+                msg += f" video_only={fused['video_only_path']}"
             if args.overlay:
                 overlay_dir = out_dir / f"{video.stem}_fused_overlay"
                 n_ov = write_fused_overlays(

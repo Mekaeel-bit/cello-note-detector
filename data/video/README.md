@@ -19,7 +19,11 @@ python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.m
 # AV fusion (recommended clip — has audible cello audio):
 python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
   -o outputs/video --fuse --overlay --max-frames 180
-# (requires ffmpeg on PATH for WAV extract)
+# requires ffmpeg on PATH; writes beside -o:
+#   <stem>_audio.wav          (PCM for pyin; play this if the MP4 is silent in your player)
+#   <stem>_video_only.mp4     (video stream without audio)
+#   <stem>_fused_timeline.json  (includes audio_path / video_path / video_only_path)
+# Fails loudly if extracted WAV RMS is near silence.
 
 # align roughly to audio only (extracts WAV via ffmpeg, runs pyin; no string fusion)
 python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \
