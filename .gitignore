@@ -1,8 +1,16 @@
-
 .venv311/
 .venv/
+venv/
 __pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+outputs/*
+!outputs/.gitkeep
+*.npy
+.pytest_cache/
 
-.venv311/
-.venv/
-__pycache__/
+# Hugging Face / torch caches (local)
+.cache/

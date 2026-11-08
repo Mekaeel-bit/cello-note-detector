@@ -1,4 +1,4 @@
-
+# Keep in sync with pyproject.toml dependencies.
 torch
 torchaudio
 transformers==4.43.4

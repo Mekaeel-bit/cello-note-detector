@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cello-note-detector"
+version = "0.3.0"
+description = "Monophonic cello audio → notes, tempo/rhythm quantization (incl. rests) + MERT embeddings"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "torchaudio",
+    "transformers==4.43.4",
+    "librosa",
+    "soundfile",
+    "numpy",
+    "matplotlib",
+]
+
+[project.scripts]
+cello-note-detector = "cello_note_detector.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,86 @@
+{
+  "name": "twinkle_opening",
+  "description": "Opening of Twinkle Twinkle (public-domain melody) transposed for cello: C3 C3 G3 G3 A3 A3 G3.",
+  "synthesis": "additive harmonic (cello-range), not a sampled instrument",
+  "sample_rate": 44100,
+  "duration_sec": 3.96,
+  "num_notes": 7,
+  "expected_notes": [
+    {
+      "midi": 48,
+      "onset": 0.05,
+      "offset": 0.5,
+      "duration": 0.45
+    },
+    {
+      "midi": 48,
+      "onset": 0.56,
+      "offset": 1.01,
+      "duration": 0.45
+    },
+    {
+      "midi": 55,
+      "onset": 1.07,
+      "offset": 1.52,
+      "duration": 0.45
+    },
+    {
+      "midi": 55,
+      "onset": 1.58,
+      "offset": 2.03,
+      "duration": 0.45
+    },
+    {
+      "midi": 57,
+      "onset": 2.09,
+      "offset": 2.54,
+      "duration": 0.45
+    },
+    {
+      "midi": 57,
+      "onset": 2.6,
+      "offset": 3.05,
+      "duration": 0.45
+    },
+    {
+      "midi": 55,
+      "onset": 3.11,
+      "offset": 3.91,
+      "duration": 0.8
+    }
+  ],
+  "num_rests": 6,
+  "expected_rests": [
+    {
+      "onset": 0.5,
+      "offset": 0.56,
+      "duration": 0.06
+    },
+    {
+      "onset": 1.01,
+      "offset": 1.07,
+      "duration": 0.06
+    },
+    {
+      "onset": 1.52,
+      "offset": 1.58,
+      "duration": 0.06
+    },
+    {
+      "onset": 2.03,
+      "offset": 2.09,
+      "duration": 0.06
+    },
+    {
+      "onset": 2.54,
+      "offset": 2.6,
+      "duration": 0.06
+    },
+    {
+      "onset": 3.05,
+      "offset": 3.11,
+      "duration": 0.06
+    }
+  ],
+  "source": "scripts/generate_multi_note_phrases.py"
+}

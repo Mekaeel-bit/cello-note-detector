@@ -1,0 +1,36 @@
+{
+  "audio_path": "data/Recordings/Fm_LFCelloPizzTAPE_SP_01_376.wav",
+  "sample_rate": 24000,
+  "duration_sec": 0.8225,
+  "pitch_method": "librosa.pyin",
+  "cello_range": {
+    "fmin": "C2",
+    "fmax": "A5"
+  },
+  "segmentation": {
+    "frame_length": 2048,
+    "hop_length": 256,
+    "min_duration": 0.04,
+    "gap_tolerance": 0.06,
+    "median_filter_size": 5,
+    "use_onsets": true,
+    "min_onset_strength": 1.2,
+    "num_onsets": 1,
+    "onset_times": [
+      0.0533
+    ]
+  },
+  "num_notes": 1,
+  "notes": [
+    {
+      "pitch_hz": 87.1418,
+      "midi": 41,
+      "note": "F2",
+      "onset": 0.096,
+      "offset": 0.832,
+      "duration": 0.736,
+      "confidence": 0.7495
+    }
+  ],
+  "mert": null
+}

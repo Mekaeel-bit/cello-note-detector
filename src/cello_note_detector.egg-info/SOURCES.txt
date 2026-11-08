@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/cello_note_detector/__init__.py
+src/cello_note_detector/__main__.py
+src/cello_note_detector/cli.py
+src/cello_note_detector.egg-info/PKG-INFO
+src/cello_note_detector.egg-info/SOURCES.txt
+src/cello_note_detector.egg-info/dependency_links.txt
+src/cello_note_detector.egg-info/entry_points.txt
+src/cello_note_detector.egg-info/requires.txt
+src/cello_note_detector.egg-info/top_level.txt
+src/cello_note_detector/audio/__init__.py
+src/cello_note_detector/audio/load.py
+src/cello_note_detector/audio/mert.py
+src/cello_note_detector/audio/pitch_baseline.py
+src/cello_note_detector/decode/__init__.py
+src/cello_note_detector/decode/events.py
