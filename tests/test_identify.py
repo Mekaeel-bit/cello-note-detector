@@ -16,7 +16,10 @@ from cello_note_detector.identify.musicxml_edition import (
     copy_edition_musicxml,
     parse_musicxml_fingerprint,
 )
-from cello_note_detector.identify.score import attach_catalog_score
+from cello_note_detector.identify.score import (
+    attach_catalog_score,
+    promote_soft_catalog_match,
+)
 
 _REPO = Path(__file__).resolve().parents[1]
 _CATALOG = _REPO / "data" / "catalog" / "catalog.json"
@@ -265,3 +268,76 @@ def test_discovery_disabled_does_not_fetch(tmp_path: Path):
     )
     assert not result.matched
     assert attempts == []
+
+
+def test_promote_soft_caprice2_duration_key_to_hard_match(tmp_path: Path):
+    """Virtuosic Caprices take: pitch gates fail, duration+key → hard MATCH + OMR."""
+    entries = load_catalog(_CATALOG, repo_root=_REPO)
+    c2 = next(e for e in entries if e.id == "dallabaco_capriccio2")
+    # Noisy Caprice-2-like hyp: pitch gates fail, but duration+key promote.
+    hyp = list(c2.midi_sequence[:220])
+    for i in range(0, len(hyp), 3):
+        hyp[i] = hyp[i] + (1 if i % 2 == 0 else -1)
+    identification = identify_sequence(hyp, catalog=entries)
+    assert not identification.matched
+
+    promoted = promote_soft_catalog_match(
+        identification,
+        entries,
+        duration_sec=176.0,
+        key_name="G minor",
+    )
+    assert promoted.matched
+    assert promoted.entry is not None
+    assert promoted.entry.id == "dallabaco_capriccio2"
+    assert promoted.reason == "duration_key_catalog_match"
+    assert promoted.score_source == "catalog"
+    assert promoted.confidence >= 0.60
+
+    out = attach_catalog_score(
+        {
+            "audio_path": "data/multi_note_phrases/clement-caprices.wav",
+            "duration_sec": 176.0,
+            "key": {"name": "G minor"},
+            "notes": [{"midi": m} for m in hyp],
+            "events": [],
+        },
+        promoted,
+        output_dir=tmp_path,
+        stem="clement-caprices",
+        export_musicxml=True,
+        export_midi=False,
+        catalog_entries=entries,
+    )
+    xml_path = tmp_path / "clement-caprices.musicxml"
+    assert xml_path.is_file()
+    assert out["identification"]["matched"] is True
+    assert out["identification"]["piece_id"] == "dallabaco_capriccio2"
+    assert out["identification"]["score_kind"] in {
+        "verbatim_pd_edition",
+        "clip_excerpt_pd_edition",
+    }
+    # Primary file is the Caprice 2 OMR/edition content, not an empty stub.
+    text = xml_path.read_text(encoding="utf-8")
+    assert "score-partwise" in text
+    assert out["identification"].get("match_mode") == "duration_key_soft_promote"
+    # Edition (or excerpt) should retain Caprice-scale note density, not 8-note junk.
+    from cello_note_detector.identify.musicxml_edition import parse_musicxml_fingerprint
+
+    fp = parse_musicxml_fingerprint(xml_path)
+    assert fp["num_notes"] >= 200
+
+
+def test_promote_soft_does_not_fire_without_key_or_duration():
+    entries = load_catalog(_CATALOG, repo_root=_REPO)
+    hyp = [48, 50, 52, 53, 55, 57, 59, 60] * 8
+    identification = identify_sequence(hyp, catalog=entries)
+    assert not identification.matched
+    # Wrong key + wrong duration → stay unmatched (avoid false Caprice attach).
+    still = promote_soft_catalog_match(
+        identification,
+        entries,
+        duration_sec=40.0,
+        key_name="C major",
+    )
+    assert not still.matched

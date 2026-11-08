@@ -21,7 +21,7 @@ from .musicxml_edition import (
     write_match_musicxml,
 )
 from .omr import assess_pdf_quality, find_audiveris, pdf_to_musicxml
-from .score import attach_catalog_score
+from .score import attach_catalog_score, promote_soft_catalog_match
 
 __all__ = [
     "CatalogEntry",
@@ -40,6 +40,7 @@ __all__ = [
     "load_discovery_index",
     "parse_musicxml_fingerprint",
     "pdf_to_musicxml",
+    "promote_soft_catalog_match",
     "resolve_clip_note_span",
     "search_catalog",
     "write_match_musicxml",
