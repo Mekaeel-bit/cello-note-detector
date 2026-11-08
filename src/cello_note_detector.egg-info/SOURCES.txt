@@ -20,6 +20,11 @@ src/cello_note_detector/decode/rhythm.py
 src/cello_note_detector/export/__init__.py
 src/cello_note_detector/export/midi.py
 src/cello_note_detector/export/musicxml.py
+src/cello_note_detector/video/__init__.py
+src/cello_note_detector/video/__main__.py
+src/cello_note_detector/video/align_audio.py
+src/cello_note_detector/video/detect.py
+src/cello_note_detector/video/models.py
 tests/test_export.py
 tests/test_key.py
 tests/test_rhythm.py
