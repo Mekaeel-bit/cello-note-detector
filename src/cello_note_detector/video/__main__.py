@@ -11,6 +11,7 @@ from cello_note_detector.video.detect import analyze_video, write_timeline
 from cello_note_detector.video.fusion import fuse_timeline
 from cello_note_detector.video.models import DEFAULT_MODEL_DIR
 from cello_note_detector.video.overlay_fuse import write_fused_overlays
+from cello_note_detector.video.sheet import write_fused_musicxml
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CLIPS = _REPO_ROOT / "data" / "video" / "clips"
@@ -67,8 +68,24 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="With --fuse, skip writing <stem>_video_only.mp4 (still writes *_audio.wav)",
     )
+    p.add_argument(
+        "--musicxml",
+        action="store_true",
+        help=(
+            "With --fuse, also write bass-clef MusicXML with fingerings + "
+            "position marks (outputs/video/<stem>_fused.musicxml)"
+        ),
+    )
+    p.add_argument(
+        "--quantize",
+        default="coarse",
+        choices=("coarse", "medium", "fine", "score"),
+        help="Rhythm coarseness for --musicxml (default: coarse)",
+    )
     p.add_argument("--model-dir", default=str(DEFAULT_MODEL_DIR))
     args = p.parse_args(argv)
+    if args.musicxml and not args.fuse:
+        raise SystemExit("--musicxml requires --fuse")
 
     videos = _discover_videos(Path(args.path))
     out_dir = Path(args.output_dir)
@@ -158,6 +175,22 @@ def main(argv: list[str] | None = None) -> None:
                     every=args.overlay_every,
                 )
                 msg += f" overlay={overlay_dir} ({n_ov} frames)"
+            if args.musicxml:
+                xml_path = out_dir / f"{video.stem}_fused.musicxml"
+                audio_for_score = fused.get("audio_path")
+                xml_out, score = write_fused_musicxml(
+                    fused,
+                    xml_path,
+                    audio_path=Path(audio_for_score) if audio_for_score else None,
+                    quantize=args.quantize,
+                    title=video.stem,
+                )
+                score_json = out_dir / f"{video.stem}_fused_score.json"
+                write_timeline(score, score_json)
+                msg += (
+                    f" musicxml={xml_out} score_json={score_json} "
+                    f"(open in MuseScore: File → Open → {xml_out})"
+                )
             print(msg)
 
 
