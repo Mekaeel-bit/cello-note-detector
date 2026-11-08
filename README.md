@@ -65,7 +65,7 @@ Useful flags:
 | `--skip-rhythm` | notes only (no tempo / rests / duration values) |
 | `--bpm 120` | override estimated tempo (BPM) |
 | `--key Gm` | override inferred key (`Gm`, `Bb`, `D major`, `A minor`, …) |
-| `--quantize medium` | coarseness preset: `coarse` / `medium` (default) / `fine` |
+| `--quantize medium` | coarseness preset: `coarse` / `medium` (default) / `fine` / `score` |
 | `--musicxml` | also write bass-clef `.musicxml` next to the JSON |
 | `--midi` | also write Type-1 `.mid` next to the JSON |
 | `--grid-beats 0.5` | override snap grid in beats (preset default: eighth) |
@@ -86,6 +86,7 @@ Useful flags:
 | `coarse` | eighth | whole → eighth (no 16ths/32nds) | readable MuseScore drafts |
 | `medium` (default) | eighth | + sixteenths | balanced |
 | `fine` | sixteenth | + dotted 16ths / 32nds | old dense behaviour |
+| `score` | sixteenth | sixteenths+ (equal-stream snap) | written-intent / moto-perpetuo reconstruction |
 
 ### Output
 
@@ -132,6 +133,16 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 3. You should see a **bass-clef** cello staff in 4/4 with the estimated metronome mark and inferred key signature. Rests appear as rest glyphs, not missing notes.
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
+
+## Bach Prelude accuracy sandbox
+
+Two Prelude WAVs live under `data/multi_note_phrases/` (`Bach_Prelude_from_Cello_Suite_in_G.wav`, `Bach-cello-suite-1.wav`). Compare against the Mutopia/Schirmer public-domain monophonic reference in `data/reference/bwv1007_prelude/` (IMSLP-aligned pitch/rhythm; bowings non-authoritative). Prefer `--quantize score` for written equal-sixteenth intent. Never infer tempo/key from filenames.
+
+```bash
+python -m cello_note_detector data/multi_note_phrases/Bach_Prelude_from_Cello_Suite_in_G.wav \
+  -o outputs/bach --skip-mert --quantize score --musicxml --midi
+python scripts/eval_pitch_sequence.py outputs/bach/Bach_Prelude_from_Cello_Suite_in_G_notes.json
+```
 
 ## Multi-note tests
 
