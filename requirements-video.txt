@@ -1,0 +1,5 @@
+# Optional extras for the video fingerings/bowings sandbox.
+# Install on top of requirements.txt:
+#   pip install -r requirements-video.txt
+opencv-python-headless>=4.8
+mediapipe>=0.10.14

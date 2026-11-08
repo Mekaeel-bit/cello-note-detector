@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cello-note-detector"
-version = "0.6.0"
-description = "Monophonic cello audio → notes, tempo/key, rhythm/rests, MusicXML/MIDI export + MERT embeddings"
+version = "0.7.0"
+description = "Monophonic cello audio → notes/rhythm/MusicXML + video fingering/bow sandbox + MERT embeddings"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

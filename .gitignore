@@ -14,3 +14,9 @@ outputs/*
 
 # Hugging Face / torch caches (local)
 .cache/
+
+# Video sandbox: large MediaPipe bundles + optional full IA downloads
+data/video/models/*.task
+data/video/raw/*
+!data/video/raw/.gitkeep
+!data/video/models/.gitkeep

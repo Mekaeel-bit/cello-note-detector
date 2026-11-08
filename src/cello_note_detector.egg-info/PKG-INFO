@@ -14,9 +14,11 @@ Requires-Dist: matplotlib
 
 # cello-note-detector
 
-Hackathon app for identifying cello notes from **monophonic audio** (video / fingerings later).
+Hackathon app for identifying cello notes from **monophonic audio**, plus a **video fingerings/bowings sandbox**.
 
-**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+**Current audio milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+
+**Video sandbox (new):** front-facing cello clips → MediaPipe hand/pose timeline of approximate finger activity + bow direction (hackathon-honest, not concert accuracy). See [`data/video/README.md`](data/video/README.md).
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
@@ -148,6 +150,21 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
+## Video fingerings / bowings sandbox
+
+Bundled front-facing WMEA scale/etude clips (YouTube originals; IA mirrors — see [`data/video/SOURCES.md`](data/video/SOURCES.md)):
+
+```bash
+pip install -r requirements-video.txt
+python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.mp4 \
+  -o outputs/video --overlay --max-frames 180
+# optional rough AV sync
+python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \
+  -o outputs/video --overlay --align-audio
+```
+
+Writes `<stem>_video_timeline.json` (events + per-frame samples) and optional overlay JPEGs. Models download on first run into `data/video/models/`.
+
 ## Bach Prelude accuracy sandbox
 
 Two Prelude WAVs live under `data/multi_note_phrases/` (`Bach_Prelude_from_Cello_Suite_in_G.wav`, `Bach-cello-suite-1.wav`). Compare against the Mutopia/Schirmer public-domain monophonic reference in `data/reference/bwv1007_prelude/` (IMSLP-aligned pitch/rhythm; bowings non-authoritative). Prefer `--quantize score` for written equal-sixteenth intent. Never infer tempo/key from filenames.
@@ -185,21 +202,25 @@ src/cello_note_detector/
   audio/          # load, pyin + onsets, MERT embed
   decode/         # note events + rhythm (tempo, key, quantize, rests)
   export/         # MusicXML + MIDI writers
-  cli.py          # entrypoint
+  video/          # MediaPipe fingering/bow sandbox CLI
+  cli.py          # audio entrypoint
 scripts/
   generate_multi_note_phrases.py
+  download_video_demos.py
 data/Recordings/          # sample-pack cello WAVs
 data/multi_note_phrases/  # synthetic multi-note + rhythm test clips
+data/video/               # front-facing demo clips + SOURCES.md
 outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 ```
 
 ## Notes / limits
 
-- Scope v1: **audio-only**, monophonic cello, **MERT-v1-95M** (not 330M).
+- Scope v1 audio: monophonic cello, **MERT-v1-95M** (not 330M).
 - Transformers is pinned to **4.43.4** for MERT’s custom code.
 - Segmentation splits on MIDI pitch changes, short gaps, and spectral onsets (so repeated same-pitch notes can separate). A post-pass merges short ±1-semitone vibrato flicker. Slides and noisy real recordings can still merge/split notes incorrectly.
 - Tempo/BPM is a **heuristic** (spectral-onset IOIs + `beat_track`, with note-duration octave resolve). Short clips, rubato, or single sustained drones can still be octave-ambiguous; use `--bpm` when you know the pulse.
 - Key is inferred from a duration-weighted pitch-class histogram (Krumhansl–Schmuckler). Sparse or heavily chromatic clips can pick the wrong mode/tonic; use `--key` to override. Filenames are never consulted.
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
 - MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events). It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
-- Out of scope for this milestone: website `/transcribe` backend, video, bowings/fingerings, MERT fine-tuning.
+- Video sandbox: MediaPipe finger/bow proxies only; no string ID, shift detection, or engraved bowing marks yet. Demo clips are YouTube-sourced (ToS) via IA mirrors — see `data/video/SOURCES.md`.
+- Out of scope here: song-ID / IMSLP catalog work, website `/transcribe` backend, MERT fine-tuning.
