@@ -24,10 +24,13 @@ from cello_note_detector.audio.pitch_baseline import (
     transcribe_notes,
 )
 from cello_note_detector.decode.events import note_events_to_dicts
+from cello_note_detector.decode.key import infer_key, parse_key
 from cello_note_detector.decode.rhythm import (
     DEFAULT_GRID_BEATS,
     DEFAULT_MIN_REST_SEC,
+    DEFAULT_QUANTIZE,
     analyze_rhythm,
+    resolve_quantize_preset,
 )
 from cello_note_detector.export import write_midi, write_musicxml
 
@@ -80,8 +83,9 @@ def _process_one(
     gap_tolerance: float,
     median_filter_size: int,
     use_onsets: bool,
-    grid_beats: float,
-    min_rest_sec: float,
+    quantize_cfg: dict,
+    bpm_override: float | None,
+    key_override: str | None,
     no_edge_rests: bool,
     export_musicxml: bool,
     export_midi: bool,
@@ -100,6 +104,15 @@ def _process_one(
     )
     note_dicts = note_events_to_dicts(events)
 
+    # Key from detected pitches (or CLI). Never from the filename.
+    if key_override:
+        try:
+            key_info = parse_key(key_override)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+    else:
+        key_info = infer_key(events)
+
     rhythm_info: dict | None = None
     rests: list[dict] = []
     timeline: list[dict] = []
@@ -108,10 +121,14 @@ def _process_one(
             audio,
             events,
             sr=sr,
-            grid_beats=grid_beats,
-            min_rest_sec=min_rest_sec,
+            grid_beats=float(quantize_cfg["grid_beats"]),
+            min_rest_sec=float(quantize_cfg["min_rest_sec"]),
+            min_rest_beats=float(quantize_cfg["min_rest_beats"]),
+            min_note_beats=float(quantize_cfg["min_note_beats"]),
+            catalog=quantize_cfg["catalog"],
             include_leading_rests=not no_edge_rests,
             include_trailing_rests=not no_edge_rests,
+            bpm_override=bpm_override,
         )
         note_dicts = _merge_note_rhythm(note_dicts, rhythm_info["note_rhythm"])
         rests = rhythm_info["rests"]
@@ -139,6 +156,7 @@ def _process_one(
         "pitch_method": "librosa.pyin",
         "cello_range": {"fmin": "C2", "fmax": "A5"},
         "segmentation": seg_meta,
+        "key": key_info,
         "num_notes": len(note_dicts),
         "notes": note_dicts,
         "mert": mert_info,
@@ -147,9 +165,15 @@ def _process_one(
     if rhythm_info is not None:
         result["tempo"] = rhythm_info["tempo"]
         result["rhythm"] = {
+            "quantize": quantize_cfg["name"],
             "grid_beats": rhythm_info["grid_beats"],
             "min_rest_sec": rhythm_info["min_rest_sec"],
-            "method": "librosa.beat + note-IOI blend; duration catalog snap",
+            "min_rest_beats": rhythm_info["min_rest_beats"],
+            "min_note_beats": rhythm_info["min_note_beats"],
+            "method": (
+                "spectral-onset + beat_track blend; "
+                "coarser duration catalog snap"
+            ),
         }
         result["num_rests"] = rhythm_info["num_rests"]
         result["rests"] = rests
@@ -189,6 +213,8 @@ def _print_summary(result: dict) -> None:
     print(f"\n=== {Path(result['audio_path']).name} ===")
     tempo = result.get("tempo")
     tempo_bit = f"  tempo={tempo['bpm']:.1f} BPM" if tempo else ""
+    key = result.get("key")
+    key_bit = f"  key={key['name']}" if key else ""
     rests_bit = (
         f"  rests={result.get('num_rests', 0)}"
         if "num_rests" in result
@@ -198,7 +224,8 @@ def _print_summary(result: dict) -> None:
         f"duration={result['duration_sec']:.2f}s  "
         f"notes={result['num_notes']}"
         f"{rests_bit}"
-        f"{tempo_bit}  "
+        f"{tempo_bit}"
+        f"{key_bit}  "
         f"onsets={result['segmentation'].get('num_onsets', 0)}  "
         f"json={result['_json_path']}"
     )
@@ -247,9 +274,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="cello-note-detector",
         description=(
             "Monophonic cello WAV → multi-note pyin transcription, "
-            "tempo/rhythm quantization (notes + rests), optional "
+            "tempo/key/rhythm quantization (notes + rests), optional "
             "MusicXML/MIDI sheet export, and optional MERT-v1-95M "
-            "frame embeddings."
+            "frame embeddings. Tempo/key are inferred from audio "
+            "(never from filenames); use --bpm / --key to override."
         ),
     )
     p.add_argument(
@@ -306,21 +334,45 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable tempo estimation and duration/rest quantization",
     )
     p.add_argument(
+        "--bpm",
+        type=float,
+        default=None,
+        help="Override estimated tempo (BPM). Never read from filenames.",
+    )
+    p.add_argument(
+        "--key",
+        default=None,
+        help=(
+            "Override inferred key signature (e.g. Gm, Bb, D major, A minor). "
+            "Written into JSON + MusicXML. Never read from filenames."
+        ),
+    )
+    p.add_argument(
+        "--quantize",
+        choices=("coarse", "medium", "fine"),
+        default=DEFAULT_QUANTIZE,
+        help=(
+            "Rhythm coarseness preset: coarse (quarters/eighths), "
+            f"medium (default; +sixteenths), fine (incl. 32nds). "
+            f"Default: {DEFAULT_QUANTIZE}"
+        ),
+    )
+    p.add_argument(
         "--grid-beats",
         type=float,
-        default=DEFAULT_GRID_BEATS,
+        default=None,
         help=(
-            "Beat subdivision for onset/duration snap "
-            f"(default: {DEFAULT_GRID_BEATS} = sixteenth)"
+            "Override beat subdivision for onset snap "
+            f"(preset default for medium: {DEFAULT_GRID_BEATS} = eighth)"
         ),
     )
     p.add_argument(
         "--min-rest-sec",
         type=float,
-        default=DEFAULT_MIN_REST_SEC,
+        default=None,
         help=(
             "Minimum silence gap (seconds) to emit as a rest "
-            f"(default: {DEFAULT_MIN_REST_SEC})"
+            f"(preset default for medium: {DEFAULT_MIN_REST_SEC})"
         ),
     )
     p.add_argument(
@@ -369,6 +421,15 @@ def main(argv: list[str] | None = None) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    try:
+        quantize_cfg = resolve_quantize_preset(
+            args.quantize,
+            grid_beats=args.grid_beats,
+            min_rest_sec=args.min_rest_sec,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
     mert_bundle = None
     if not args.skip_mert:
         print(f"Loading {args.model_id} …")
@@ -388,8 +449,9 @@ def main(argv: list[str] | None = None) -> int:
             gap_tolerance=args.gap_tolerance,
             median_filter_size=args.median_filter_size,
             use_onsets=not args.no_onsets,
-            grid_beats=args.grid_beats,
-            min_rest_sec=args.min_rest_sec,
+            quantize_cfg=quantize_cfg,
+            bpm_override=args.bpm,
+            key_override=args.key,
             no_edge_rests=args.no_edge_rests,
             export_musicxml=args.musicxml,
             export_midi=args.midi,

@@ -19,6 +19,12 @@ def _sample_result() -> dict:
     return {
         "audio_path": "data/multi_note_phrases/rhythm_quarters_with_rests.wav",
         "tempo": {"bpm": 100.0},
+        "key": {
+            "name": "C major",
+            "tonic": "C",
+            "mode": "major",
+            "fifths": 0,
+        },
         "notes": [
             {
                 "midi": 48,
@@ -171,3 +177,33 @@ def test_midi_file_header_and_notes(tmp_path: Path):
     assert bytes([0x90, 48]) in data or bytes([0x90, 48, 80]) in data
     assert bytes([0x90, 52, 80]) in data
     assert bytes([0x90, 55, 80]) in data
+
+
+def test_musicxml_writes_inferred_key_and_flats():
+    result = _sample_result()
+    result["key"] = {
+        "name": "G minor",
+        "tonic": "G",
+        "mode": "minor",
+        "fifths": -2,
+    }
+    # Bb3 = MIDI 58
+    result["events"] = [
+        {
+            "type": "note",
+            "midi": 58,
+            "note": "A#3",
+            "onset": 0.0,
+            "duration_value": "quarter",
+            "duration_value_beats": 1.0,
+            "quantized_duration_beats": 1.0,
+        }
+    ]
+    root = build_musicxml(result)
+    fifths = root.find(".//key/fifths")
+    assert fifths is not None and fifths.text == "-2"
+    pitch = root.find(".//pitch")
+    assert pitch is not None
+    assert pitch.find("step").text == "B"
+    assert pitch.find("alter").text == "-1"
+    assert pitch.find("octave").text == "3"
