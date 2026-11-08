@@ -2,9 +2,11 @@
 
 Hackathon app for identifying cello notes from **monophonic audio** (video / fingerings later).
 
-**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **song ID against a local public-domain catalog** (attach published MusicXML/MIDI on confident match) → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
+
+**Song ID policy:** only public-domain editions (Mutopia / IMSLP-aligned sources already under `data/reference/`). On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run.
 
 ## Setup
 
@@ -78,6 +80,9 @@ Useful flags:
 | `--gap-tolerance 0.10` | bridge short unvoiced gaps inside one note |
 | `--min-duration 0.08` | drop flicker shorter than this |
 | `--median-filter-size 11` | MIDI median window to reduce vibrato flicker |
+| `--identify` | match pitch sequence to the local PD catalog; implies `--score-source auto` |
+| `--score-source auto\|transcribe\|catalog` | sheet source: catalog on confident match (`auto`), always transcription, or prefer catalog (still falls back) |
+| `--catalog PATH` | catalog JSON (default: `data/catalog/catalog.json`) |
 
 ### Quantize presets
 
@@ -134,9 +139,36 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
+## Song identification + published score
+
+The local catalog (`data/catalog/catalog.json`) currently includes **Bach Suite 1 Prélude** (Mutopia/Schirmer 1916 PD). On a confident match with `--identify` / `--score-source auto`, MusicXML/MIDI are generated from the **written reference** (not the rubato performance), and match metadata (`title`, `edition`, `confidence`) is written into the notes JSON plus `<stem>_identification.json`.
+
+```bash
+# Demo: identify long Prelude take → attach Mutopia/Schirmer score
+python -m cello_note_detector data/multi_note_phrases/Bach-cello-suite-1.wav \
+  -o outputs/bach_id --skip-mert --quantize score --identify --musicxml --midi
+
+# Force transcription sheet even if identified (metadata still recorded)
+python -m cello_note_detector data/multi_note_phrases/Bach-cello-suite-1.wav \
+  -o outputs/bach_id_meta --skip-mert --quantize score --identify \
+  --score-source transcribe --musicxml
+
+# Fallback demo: unknown / non-catalog solo → transcription export (no failure)
+python -m cello_note_detector data/multi_note_phrases/scale_c_major_cello.wav \
+  -o outputs/fallback --skip-mert --identify --musicxml --midi
+```
+
+| Outcome | Sheet MusicXML/MIDI | JSON |
+|---------|---------------------|------|
+| Confident catalog match (`auto` / `catalog`) | From PD reference | `identification.matched=true`, `score_source=catalog`, plus `catalog_score` |
+| No match / low confidence | From audio transcription | `identification.matched=false`, `fallback=audio_transcription` |
+| Default (no `--identify`) | Transcription (unchanged) | no `identification` block |
+
+Add more PD solos by dropping a monophonic reference under `data/reference/<id>/` and appending an entry to `data/catalog/catalog.json` (see that folder’s README). **Do not** scrape commercial editions.
+
 ## Bach Prelude accuracy sandbox
 
-Two Prelude WAVs live under `data/multi_note_phrases/` (`Bach_Prelude_from_Cello_Suite_in_G.wav`, `Bach-cello-suite-1.wav`). Compare against the Mutopia/Schirmer public-domain monophonic reference in `data/reference/bwv1007_prelude/` (IMSLP-aligned pitch/rhythm; bowings non-authoritative). Prefer `--quantize score` for written equal-sixteenth intent. Never infer tempo/key from filenames.
+Two Prelude WAVs live under `data/multi_note_phrases/` (`Bach_Prelude_from_Cello_Suite_in_G.wav`, `Bach-cello-suite-1.wav`). Compare against the Mutopia/Schirmer public-domain monophonic reference in `data/reference/bwv1007_prelude/` (IMSLP-aligned pitch/rhythm; bowings non-authoritative). Prefer `--quantize score` for written equal-sixteenth intent. For demos that want the **published** score rather than the performance dump, use `--identify` (above). Never infer tempo/key from filenames.
 
 ```bash
 python -m cello_note_detector data/multi_note_phrases/Bach_Prelude_from_Cello_Suite_in_G.wav \
@@ -170,12 +202,15 @@ python scripts/generate_multi_note_phrases.py
 src/cello_note_detector/
   audio/          # load, pyin + onsets, MERT embed
   decode/         # note events + rhythm (tempo, key, quantize, rests)
+  identify/       # local catalog song ID + PD score attach / fallback
   export/         # MusicXML + MIDI writers
   cli.py          # entrypoint
 scripts/
   generate_multi_note_phrases.py
 data/Recordings/          # sample-pack cello WAVs
 data/multi_note_phrases/  # synthetic multi-note + rhythm test clips
+data/catalog/             # local PD cello catalog index
+data/reference/           # Mutopia/Schirmer (etc.) monophonic references
 outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 ```
 
@@ -187,5 +222,6 @@ outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 - Tempo/BPM is a **heuristic** (spectral-onset IOIs + `beat_track`, with note-duration octave resolve). Short clips, rubato, or single sustained drones can still be octave-ambiguous; use `--bpm` when you know the pulse.
 - Key is inferred from a duration-weighted pitch-class histogram (Krumhansl–Schmuckler). Sparse or heavily chromatic clips can pick the wrong mode/tonic; use `--key` to override. Filenames are never consulted.
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
-- MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events). It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
-- Out of scope for this milestone: website `/transcribe` backend, video, bowings/fingerings, MERT fine-tuning.
+- MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events) unless song ID attaches a **catalog reference** score. It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm for transcription exports (they no-op with a warning under `--skip-rhythm`).
+- Song ID is a **small local catalog** matcher (window accuracy + LCS; ±1 octave). It is not a general music-recognition service. Only PD sources are shipped; commercial editions are out of scope. Unknown solos always fall back to transcription.
+- Out of scope for this milestone: video / fingerings / bowings, full Elgar concerto catalog, website `/transcribe` backend, MERT fine-tuning.

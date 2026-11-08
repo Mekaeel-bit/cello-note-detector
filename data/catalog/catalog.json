@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Small local catalog of public-domain cello solos for song identification. Prefer Mutopia/IMSLP PD sources already vendored under data/reference/. Do not scrape commercial editions. Add new entries by pointing at a monophonic reference JSON (midi_sequence + events).",
+  "default_min_confidence": 0.55,
+  "entries": [
+    {
+      "id": "bwv1007_prelude",
+      "title": "Bach Cello Suite No. 1, BWV 1007 — Prélude",
+      "composer": "Johann Sebastian Bach",
+      "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain)",
+      "license": "Public Domain",
+      "imslp_work": "https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)",
+      "key": "G major",
+      "time_signature": "4/4",
+      "reference_json": "data/reference/bwv1007_prelude/prelude_monophonic_reference.json",
+      "midi_path": "data/reference/bwv1007_prelude/mutopia517_prelude.mid",
+      "min_confidence": 0.55,
+      "match_notes": "Opening motif G2–D3–B3–A3–B3 is distinctive; real takes may insert/delete notes so confidence uses best-window + LCS blend."
+    }
+  ]
+}
