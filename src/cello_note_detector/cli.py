@@ -243,10 +243,11 @@ def _process_one(
             output_dir=output_dir,
             stem=wav_path.stem,
             # Defer MusicXML/MIDI to the block below when using transcription;
-            # when using catalog, attach_catalog_score writes them.
+            # when using catalog, attach_catalog_score copies the PD edition.
             export_musicxml=export_musicxml and use_catalog_score,
             export_midi=export_midi and use_catalog_score,
             bpm=bpm_override,
+            catalog_entries=catalog_entries,
         )
         result["score_source"] = (
             "catalog" if use_catalog_score else "transcribe"

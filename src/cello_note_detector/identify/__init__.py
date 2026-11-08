@@ -2,13 +2,15 @@
 
 from .catalog import CatalogEntry, load_catalog
 from .match import IdentificationResult, identify_sequence
-from .score import attach_catalog_score, reference_to_result
+from .musicxml_edition import copy_edition_musicxml, parse_musicxml_fingerprint
+from .score import attach_catalog_score
 
 __all__ = [
     "CatalogEntry",
     "IdentificationResult",
     "attach_catalog_score",
+    "copy_edition_musicxml",
     "identify_sequence",
     "load_catalog",
-    "reference_to_result",
+    "parse_musicxml_fingerprint",
 ]

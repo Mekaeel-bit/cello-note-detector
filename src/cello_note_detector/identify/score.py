@@ -1,4 +1,4 @@
-"""Attach / generate published scores from a matched catalog entry."""
+"""Attach verbatim PD MusicXML editions on catalog match."""
 
 from __future__ import annotations
 
@@ -7,132 +7,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from cello_note_detector.decode.key import parse_key
-from cello_note_detector.export import write_midi, write_musicxml
-
 from .catalog import CatalogEntry
 from .match import IdentificationResult
-
-# Maps duration_value → beats (mirrors export/musicxml defaults).
-_DURATION_BEATS: dict[str, float] = {
-    "whole": 4.0,
-    "dotted_half": 3.0,
-    "half": 2.0,
-    "dotted_quarter": 1.5,
-    "quarter": 1.0,
-    "dotted_eighth": 0.75,
-    "eighth": 0.5,
-    "dotted_sixteenth": 0.375,
-    "sixteenth": 0.25,
-    "thirty_second": 0.125,
-}
-
-
-def _midi_to_note_name(midi: int) -> str:
-    names = ("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
-    return f"{names[midi % 12]}{midi // 12 - 1}"
-
-
-def _key_info(entry: CatalogEntry) -> dict[str, Any]:
-    raw = entry.key or (entry.reference.get("key") if entry.reference else None)
-    if raw:
-        try:
-            return parse_key(str(raw))
-        except ValueError:
-            pass
-    return {
-        "name": str(raw or "C major"),
-        "tonic": "C",
-        "mode": "major",
-        "fifths": 0,
-        "method": "catalog",
-        "confidence": 1.0,
-    }
-
-
-def reference_to_result(
-    entry: CatalogEntry,
-    *,
-    audio_path: str | None = None,
-    bpm: float = 60.0,
-) -> dict[str, Any]:
-    """Build a CLI-shaped result dict from a catalog reference for export.
-
-    Uses the playable catalog edition (``score_json`` when present, else the
-    match reference) — never the performance transcription.
-    """
-    ref = entry.score_data
-    events_in = ref.get("events") or []
-    notes: list[dict[str, Any]] = []
-    timeline: list[dict[str, Any]] = []
-    beat_sec = 60.0 / max(float(bpm), 1e-6)
-
-    for ev in events_in:
-        if "midi" not in ev:
-            continue
-        midi = int(ev["midi"])
-        dur_beats = float(
-            ev.get("duration_beats")
-            or _DURATION_BEATS.get(str(ev.get("duration_value") or ""), 0.25)
-        )
-        onset_beats = float(ev.get("onset_beats", 0.0))
-        dur_name = ev.get("duration_value")
-        if not dur_name:
-            # Nearest catalog name.
-            dur_name = min(
-                _DURATION_BEATS.items(),
-                key=lambda kv: abs(kv[1] - dur_beats),
-            )[0]
-        onset_sec = onset_beats * beat_sec
-        dur_sec = dur_beats * beat_sec
-        note = {
-            "midi": midi,
-            "note": _midi_to_note_name(midi),
-            "onset": round(onset_sec, 4),
-            "offset": round(onset_sec + dur_sec, 4),
-            "duration": round(dur_sec, 4),
-            "confidence": 1.0,
-            "onset_beats": onset_beats,
-            "duration_beats": dur_beats,
-            "quantized_onset_beats": onset_beats,
-            "quantized_duration_beats": dur_beats,
-            "duration_value": dur_name,
-            "duration_value_beats": dur_beats,
-            "source": "catalog_reference",
-        }
-        notes.append(note)
-        timeline.append({**note, "type": "note"})
-
-    key_info = _key_info(entry)
-    key_info = dict(key_info)
-    key_info["method"] = "catalog"
-    key_info["confidence"] = 1.0
-
-    total_beats = float(ref.get("total_beats") or (notes[-1]["onset_beats"] + notes[-1]["duration_beats"] if notes else 0.0))
-    return {
-        "audio_path": audio_path,
-        "sample_rate": None,
-        "duration_sec": round(total_beats * beat_sec, 4),
-        "pitch_method": "catalog_reference",
-        "score_source": "catalog",
-        "catalog_piece_id": entry.id,
-        "key": key_info,
-        "tempo": {
-            "bpm": float(bpm),
-            "method": "catalog_default",
-            "note": "Catalog score uses a nominal BPM for MusicXML/MIDI playback; written durations come from the PD reference.",
-        },
-        "num_notes": len(notes),
-        "notes": notes,
-        "num_rests": 0,
-        "rests": [],
-        "events": timeline,
-        "rhythm": {
-            "quantize": "catalog",
-            "score_intent": True,
-            "method": "published public-domain reference (local catalog)",
-        },
-    }
+from .musicxml_edition import copy_edition_musicxml, estimate_movements_by_duration
 
 
 def attach_catalog_score(
@@ -144,12 +21,12 @@ def attach_catalog_score(
     export_musicxml: bool,
     export_midi: bool,
     bpm: float | None = None,
+    catalog_entries: list[CatalogEntry] | None = None,
 ) -> dict[str, Any]:
-    """Copy/generate the published score into ``output_dir`` and annotate JSON.
+    """Copy the published MusicXML edition into ``output_dir`` (verbatim).
 
-    Always records identification metadata. When matched, writes catalog-based
-    MusicXML/MIDI (and a sidecar reference copy). When not matched, leaves the
-    existing transcription exports untouched.
+    Never regenerates pitches from JSON/MIDI for the primary MuseScore file.
+    On no match, records fallback metadata and leaves transcription exports alone.
     """
     result["identification"] = identification.to_metadata()
     result["score_source"] = identification.score_source
@@ -159,64 +36,68 @@ def attach_catalog_score(
         return result
 
     entry = identification.entry
-    # Prefer performance-estimated tempo for playback if available.
-    tempo_bpm = bpm
-    if tempo_bpm is None:
-        tempo = result.get("tempo")
-        if isinstance(tempo, dict) and tempo.get("bpm"):
-            tempo_bpm = float(tempo["bpm"])
-        else:
-            tempo_bpm = 60.0
 
-    catalog_result = reference_to_result(
-        entry,
-        audio_path=result.get("audio_path"),
-        bpm=float(tempo_bpm),
-    )
+    # Optional: if this id is a multi-movement collection, prefer the movement
+    # whose typical duration is closest to the audio (pitch still from edition).
+    if catalog_entries and entry.typical_duration_sec is not None:
+        duration = float(result.get("duration_sec") or 0.0)
+        movs = [
+            {
+                "entry": e,
+                "typical_duration_sec": e.typical_duration_sec,
+            }
+            for e in catalog_entries
+            if e.typical_duration_sec is not None
+            and e.id.startswith(entry.id.split("_")[0])
+        ]
+        # Only re-pick among siblings when several duration-tagged entries exist.
+        if len(movs) > 1 and duration > 0:
+            pick = estimate_movements_by_duration(movs, duration)
+            if pick is not None and pick["entry"].id != entry.id:
+                entry = pick["entry"]
+                identification.entry = entry
+                result["identification"] = identification.to_metadata()
+                result["identification"]["duration_selected"] = True
 
-    # Sidecar: copy match + playable score JSON next to outputs.
-    ref_copy = output_dir / f"{stem}_catalog_reference.json"
-    shutil.copy2(entry.reference_json, ref_copy)
-    result["identification"]["catalog_reference_copy"] = str(ref_copy)
-    if entry.score_json and entry.score_json.is_file():
-        score_copy = output_dir / f"{stem}_catalog_score.json"
-        shutil.copy2(entry.score_json, score_copy)
-        result["identification"]["catalog_score_copy"] = str(score_copy)
+    result["identification"]["edition_musicxml_source"] = str(entry.edition_musicxml)
+    if entry.ornaments:
+        result["identification"]["edition_ornaments"] = entry.ornaments
 
-    # Optional: copy Mutopia MIDI if present.
+    # Sidecar copies for debugging / provenance.
+    if entry.fingerprint_json and entry.fingerprint_json.is_file():
+        fp_copy = output_dir / f"{stem}_catalog_fingerprint.json"
+        shutil.copy2(entry.fingerprint_json, fp_copy)
+        result["identification"]["catalog_fingerprint_copy"] = str(fp_copy)
     if entry.midi_path and entry.midi_path.is_file():
         mid_copy = output_dir / f"{stem}_catalog_source.mid"
         shutil.copy2(entry.midi_path, mid_copy)
         result["identification"]["catalog_midi_copy"] = str(mid_copy)
 
     if export_musicxml:
-        # Primary MuseScore file MUST be the published catalog edition.
         xml_path = output_dir / f"{stem}.musicxml"
-        write_musicxml(catalog_result, xml_path, title=entry.title)
-        result["_musicxml_path"] = str(xml_path)
-        result["identification"]["score_musicxml"] = str(xml_path)
-        result["identification"]["score_kind"] = "catalog_edition"
-        result["identification"]["score_note_count"] = catalog_result["num_notes"]
+        written = copy_edition_musicxml(entry.edition_musicxml, xml_path)
+        result["_musicxml_path"] = str(written)
+        result["identification"]["score_musicxml"] = str(written)
+        result["identification"]["score_kind"] = "verbatim_pd_edition"
+        result["identification"]["score_note_count"] = entry.num_notes
 
-    if export_midi:
+    if export_midi and entry.midi_path and entry.midi_path.is_file():
+        # Prefer publisher MIDI when present; otherwise skip (don't invent MIDI).
         mid_path = output_dir / f"{stem}.mid"
-        write_midi(catalog_result, mid_path)
+        shutil.copy2(entry.midi_path, mid_path)
         result["_midi_path"] = str(mid_path)
         result["identification"]["score_midi"] = str(mid_path)
-        result["identification"]["score_kind"] = "catalog_edition"
 
-    # Keep the performance transcription notes in the JSON, but mark that the
-    # sheet artifacts came from the catalog when exported.
     result["catalog_score"] = {
         "piece_id": entry.id,
         "title": entry.title,
         "edition": entry.edition,
-        "num_notes": catalog_result["num_notes"],
-        "key": catalog_result["key"],
-        "tempo_bpm": catalog_result["tempo"]["bpm"],
+        "license": entry.license,
+        "num_notes": entry.num_notes,
+        "ornaments": entry.ornaments,
+        "edition_musicxml": str(entry.edition_musicxml),
     }
 
-    # Write match metadata last so score paths / score_kind are included.
     meta_path = output_dir / f"{stem}_identification.json"
     result["identification"]["metadata_path"] = str(meta_path)
     meta_path.write_text(

@@ -1,30 +1,58 @@
-# Local score catalog (song ID)
+# Extensible PD score catalog
 
-Hackathon v1 catalog for **song identification + published score attach**.
+Local catalog for **song ID + verbatim published MusicXML attach**.
 
-Only **public-domain** editions belong here (Mutopia / IMSLP-aligned sources
-already under `data/reference/`). Do **not** scrape copyrighted commercial
-editions. Online fetch is optional and not required for v1 — local JSON is enough.
+Bach Suite 1 Prélude and Gabrielli Ricercari are the first test entries — the
+catalog is **not** limited to them. Add any public-domain / CC0 cello MusicXML
+(IMSLP, Mutopia, etc.).
 
-| File | Role |
-|------|------|
-| `catalog.json` | Index of known cello solos (`id`, title, edition, paths, thresholds) |
+## Layout
 
-## Adding a piece
+```text
+data/catalog/
+  catalog.json                 # index of pieces
+  pieces/<id>/
+    edition.musicxml|.mxl      # VERBATIM PD edition (what MuseScore opens)
+    fingerprint.json           # pitch sequence + ornament stats for matching
+    meta.json                  # title / license / IMSLP link
+    source/                    # optional LilyPond / provenance sidecars
+```
 
-1. Drop a monophonic reference under `data/reference/<piece_id>/` with:
-   - `midi_sequence`: list of MIDI ints (used for song-ID matching)
-   - optional playable `score_json` with `events` for MusicXML/MIDI attach
-     (prefer a clean edition file if the match reference is eval-only)
-   - provenance fields (`title`, `source_edition`, `imslp_work`, `key`, …)
-2. Append an entry to `catalog.json` pointing at `reference_json` and optional `score_json`.
-3. Keep `min_confidence` conservative so unknown solos fall back to audio transcription.
+## Add a piece
 
-On match, the primary `<stem>.musicxml` is always the catalog edition; the
-performance dump is written beside it as `<stem>_transcribed.musicxml`.
+```bash
+python scripts/add_catalog_piece.py \
+  --id my_pd_solo \
+  --musicxml /path/to/imslp_or_mutopia.musicxml \
+  --title "Title" \
+  --composer "Composer" \
+  --license "Public Domain" \
+  --imslp "https://imslp.org/wiki/..." \
+  --typical-duration-sec 180
+```
 
-## Fallback policy
+Prefer **MusicXML/MXL edition files**. Do not scrape commercial editions.
 
-If confidence is below the entry/catalog threshold, or the catalog is empty,
-the CLI **always** keeps the audio transcription export. Missing public scores
-must never fail a run.
+## MATCH behavior
+
+On confident identify:
+
+- Primary `<stem>.musicxml` = **byte-for-byte copy** of `edition.musicxml`
+  (slurs, trills, ties kept).
+- `<stem>_transcribed.musicxml` = audio transcription (comparison only).
+
+On miss / low confidence: transcription export only (never fails).
+
+## Gabrielli CC0 MXL
+
+When you can download IMSLP #923358 (Amaracle CC0), replace the placeholder:
+
+```bash
+python scripts/add_catalog_piece.py \
+  --id gabrielli_ricercari \
+  --musicxml ~/Downloads/IMSLP923358.mxl \
+  --title "Gabrielli 7 Ricercari" \
+  --composer "Domenico Gabrielli" \
+  --license "CC0 1.0" \
+  --imslp "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)"
+```

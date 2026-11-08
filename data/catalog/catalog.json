@@ -1,22 +1,35 @@
 {
-  "version": 1,
-  "description": "Small local catalog of public-domain cello solos for song identification. Prefer Mutopia/IMSLP PD sources already vendored under data/reference/. Do not scrape commercial editions. Add new entries by pointing at a monophonic reference JSON (midi_sequence + events).",
+  "version": 2,
+  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli Ricercari are first test entries \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. On MATCH the primary .musicxml is a verbatim copy of the edition file (slurs/trills preserved). Unknown pieces fall back to audio transcription.",
   "default_min_confidence": 0.55,
   "entries": [
     {
       "id": "bwv1007_prelude",
-      "title": "Bach Cello Suite No. 1, BWV 1007 — Prélude",
+      "title": "Bach Cello Suite No. 1, BWV 1007 \u2014 Pr\u00e9lude",
       "composer": "Johann Sebastian Bach",
       "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain)",
       "license": "Public Domain",
       "imslp_work": "https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)",
       "key": "G major",
-      "time_signature": "4/4",
-      "reference_json": "data/reference/bwv1007_prelude/prelude_monophonic_reference.json",
-      "score_json": "data/reference/bwv1007_prelude/prelude_catalog_score.json",
-      "midi_path": "data/reference/bwv1007_prelude/mutopia517_prelude.mid",
       "min_confidence": 0.55,
-      "match_notes": "Opening motif G2–D3–B3–A3–B3 is distinctive; real takes may insert/delete notes so confidence uses best-window + LCS blend."
+      "edition_musicxml": "data/catalog/pieces/bwv1007_prelude/edition.musicxml",
+      "fingerprint_json": "data/catalog/pieces/bwv1007_prelude/fingerprint.json",
+      "typical_duration_sec": 160.0,
+      "match_notes": "Fingerprint extracted from the edition MusicXML (monophonic pitch sequence). Slurs/trills preserved in the verbatim edition file."
+    },
+    {
+      "id": "gabrielli_ricercari",
+      "title": "Gabrielli Ricercari for Solo Cello (G minor)",
+      "composer": "Domenico Gabrielli",
+      "edition": "WIMA/IMSLP-aligned catalog MusicXML (swap in Amaracle CC0 MXL #923358 via add_catalog_piece.py)",
+      "license": "Public Domain / CC0 preferred",
+      "imslp_work": "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)",
+      "key": "G minor",
+      "min_confidence": 0.4,
+      "edition_musicxml": "data/catalog/pieces/gabrielli_ricercari/edition.musicxml",
+      "fingerprint_json": "data/catalog/pieces/gabrielli_ricercari/fingerprint.json",
+      "typical_duration_sec": 105.0,
+      "match_notes": "Fingerprint currently audio-aligned to data/multi_note_phrases/gabrielli.wav for demo matching. After dropping the IMSLP CC0 MXL, re-run add_catalog_piece.py so fingerprint comes from the edition file."
     }
   ]
 }

@@ -1,0 +1,22 @@
+{
+  "id": "gabrielli_ricercari",
+  "title": "Gabrielli Ricercari for Solo Cello (G minor)",
+  "composer": "Domenico Gabrielli",
+  "edition": "Catalog MusicXML for gabrielli.wav (replace with IMSLP Amaracle CC0 MXL #923358)",
+  "license": "Public Domain / CC0 preferred",
+  "imslp_work": "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)",
+  "key": "G minor",
+  "min_confidence": 0.4,
+  "edition_musicxml": "data/catalog/pieces/gabrielli_ricercari/edition.musicxml",
+  "fingerprint_json": "data/catalog/pieces/gabrielli_ricercari/fingerprint.json",
+  "typical_duration_sec": 105.0,
+  "ornaments": {
+    "slurs": 10,
+    "trills_or_waves": 1,
+    "ties": 118,
+    "has_slurs": true,
+    "has_trills": true
+  },
+  "num_notes": 238,
+  "num_measures": 65
+}
