@@ -134,12 +134,16 @@ def test_copy_edition_helper(tmp_path: Path):
 
 def test_gabrielli_edition_present_and_fingerprintable():
     assert _GAB_XML.is_file()
+    text = _GAB_XML.read_text(encoding="utf-8")
+    assert "1st Ricercar" in text
+    assert "3</beats>" in text or ">3</beats>" in text
     fp = parse_musicxml_fingerprint(_GAB_XML)
-    assert fp["num_notes"] >= 50
+    assert fp["num_notes"] >= 200
     entries = load_catalog(_CATALOG, repo_root=_REPO)
     gab = next(e for e in entries if e.id == "gabrielli_ricercari")
-    # Opening G2 should be present for Ricercar 1.
-    assert 43 in gab.midi_sequence[:20]
+    # Opening G2–A2–Bb2 of Ricercar 1 (sounding / Gomez-aligned fingerprint).
+    assert gab.midi_sequence[:3] == [43, 45, 46]
+    assert gab.num_notes >= 200
 
 
 def test_attach_no_match_keeps_transcription_fallback(tmp_path: Path):

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli are first TEST entries only \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. SANDBOX: not merge-ready until MuseScore output matches PD editions (Bach Mutopia PDF; Gabrielli needs real IMSLP MXL #923358 / WIMA 1st Ricercar).",
+  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli 1st Ricercar are first TEST entries \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. Prefer scripts/fetch_imslp_score.py for IMSLP CDN discovery.",
   "default_min_confidence": 0.55,
   "entries": [
     {
@@ -19,17 +19,17 @@
     },
     {
       "id": "gabrielli_ricercari",
-      "title": "Gabrielli Ricercari for Solo Cello (G minor)",
+      "title": "Gabrielli 7 Ricercari \u2014 1st Ricercar",
       "composer": "Domenico Gabrielli",
-      "edition": "PLACEHOLDER \u2014 replace with IMSLP #923358 CC0 MXL or WIMA Gomez 1st Ricercar MusicXML (see SOURCE.txt)",
-      "license": "Public Domain / CC0 preferred",
+      "edition": "Amaracle CC0 IMSLP #923358 (1st Ricercar extracted); fingerprint from WIMA/Gomez #187416 MIDI",
+      "license": "CC0 1.0",
       "imslp_work": "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)",
       "key": "G minor",
       "min_confidence": 0.4,
       "edition_musicxml": "data/catalog/pieces/gabrielli_ricercari/edition.musicxml",
       "fingerprint_json": "data/catalog/pieces/gabrielli_ricercari/fingerprint.json",
       "typical_duration_sec": 105.0,
-      "match_notes": "Fingerprint audio-aligned for demo MATCH only. Primary MusicXML is NOT the correct PD edition until replaced."
+      "match_notes": "Edition MusicXML = Amaracle #923358 1st Ricercar. Fingerprint = WIMA/Gomez #187416 sounding MIDI for audio match."
     }
   ]
 }

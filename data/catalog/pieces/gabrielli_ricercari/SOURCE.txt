@@ -1,26 +1,39 @@
-SANDBOX BLOCKER — not merge-ready for Gabrielli
+Gabrielli — 1st Ricercar (PD MusicXML wired)
 
-Teddy’s “correct” screenshot is the WIMA / Alberto Gomez “1st Ricercar” edition
-(IMSLP #187414 PDF), NOT our provisional generated MusicXML.
+Work page (source of discovery):
+  https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)
 
-Required PD MusicXML (drop in via add_catalog_piece.py):
-  Preferred CC0 MusicXML/MXL: IMSLP #923358 (Amaracle, CC0 1.0)
-    Work: https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)
-    Index: https://imslp.org/wiki/Special:ImagefromIndex/923358
-  Reference PDF (correct markings): IMSLP #187414 WIMA Gomez
-    https://ks15.imslp.org/files/imglnks/usimg/f/fa/IMSLP187414-WIMA.d4a2-GabrielliRicercares.pdf
+Edition MusicXML (what MuseScore opens):
+  data/catalog/pieces/gabrielli_ricercari/edition.musicxml
+  = Amaracle CC0 IMSLP #923358, 1st Ricercar only (measures 1–74)
+  CDN:
+    https://ks15.imslp.org/files/imglnks/usimg/4/43/IMSLP923358-PMLP126162-Gabrielli_Ricercares_Scordatura-Handgrip_notation_%28Drop_G%29.mxl
+  Full MXL kept at: source/IMSLP923358-Amaracle-Ricercares.mxl
+  Title credit in file: “1st Ricercar” (matches Teddy’s correct edition label)
 
-Automated IMSLP MXL fetch is blocked (disclaimer/redirect wall) in this agent
-environment. After downloading locally:
+Fingerprint (identify / sounding pitch):
+  WIMA/Gomez IMSLP #187416 MIDI (same work page)
+  CDN:
+    https://ks15.imslp.org/files/imglnks/usimg/b/bd/IMSLP187416-WIMA.e164-GabrielliRicercar1.mid
+  Local: source/IMSLP187416-WIMA-GabrielliRicercar1.mid
+  Why separate: Amaracle handgrip engraving has a few written pitches that diverge
+  from the sounding WIMA/Gomez line; audio identify uses sounding MIDI.
 
-  python3 scripts/add_catalog_piece.py \
-    --id gabrielli_ricercari \
-    --musicxml ~/Downloads/IMSLP923358.mxl \
-    --title "Gabrielli 7 Ricercari — 1st Ricercar" \
-    --composer "Domenico Gabrielli" \
-    --license "CC0 1.0" \
-    --imslp "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)" \
-    --typical-duration-sec 105
+Reference PDF (Gomez “1st Ricercar” markings):
+  https://ks15.imslp.org/files/imglnks/usimg/f/fa/IMSLP187414-WIMA.d4a2-GabrielliRicercares.pdf
 
-Then re-run identify on data/multi_note_phrases/gabrielli.wav and confirm
-outputs/gabrielli_id/gabrielli.musicxml matches the correct PDF openings/markings.
+Re-fetch helper (no deep links required long-term):
+  python3 scripts/fetch_imslp_score.py \
+    --work-url 'https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)' \
+    --prefer mxl --imslp-id 923358 -o /tmp/gabrielli.mxl
+
+Why auto-find failed before:
+  Special:ImagefromIndex hits IMSLP bot-check/disclaimer redirects for curl.
+  Guessed CDN paths 404 without the real IMSLP####-filename. Learning the work
+  page’s /images/h1/h2/file links → ks15 CDN pattern fixes discovery.
+
+Teddy verify:
+  python -m cello_note_detector data/multi_note_phrases/gabrielli.wav \
+    -o outputs/gabrielli_id --skip-mert --quantize score --identify --musicxml
+  Open outputs/gabrielli_id/gabrielli.musicxml (NOT *_transcribed*)
+  Confirm “1st Ricercar” title/markings vs WIMA PDF / his correct screenshot.
