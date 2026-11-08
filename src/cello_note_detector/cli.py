@@ -33,12 +33,19 @@ from cello_note_detector.decode.rhythm import (
     resolve_quantize_preset,
 )
 from cello_note_detector.export import write_midi, write_musicxml
+from cello_note_detector.identify import (
+    attach_catalog_score,
+    identify_sequence,
+    load_catalog,
+)
+from cello_note_detector.identify.catalog import DEFAULT_CATALOG_PATH
 
 # Repo root: .../src/cello_note_detector/cli.py → parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RECORDINGS = _REPO_ROOT / "data" / "Recordings"
 DEFAULT_PHRASES = _REPO_ROOT / "data" / "multi_note_phrases"
 DEFAULT_OUTPUT_DIR = _REPO_ROOT / "outputs"
+SCORE_SOURCES = ("auto", "transcribe", "catalog")
 
 
 def _discover_wavs(path: Path) -> list[Path]:
@@ -71,6 +78,17 @@ def _merge_note_rhythm(note_dicts: list[dict], note_rhythm: list[dict]) -> list[
     return out
 
 
+def _resolve_score_source(
+    *,
+    score_source: str | None,
+    identify: bool,
+) -> str:
+    """Default score source: ``auto`` when identifying, else ``transcribe``."""
+    if score_source:
+        return score_source
+    return "auto" if identify else "transcribe"
+
+
 def _process_one(
     wav_path: Path,
     *,
@@ -89,6 +107,9 @@ def _process_one(
     no_edge_rests: bool,
     export_musicxml: bool,
     export_midi: bool,
+    identify: bool = False,
+    score_source: str = "transcribe",
+    catalog_entries: list | None = None,
 ) -> dict:
     audio, sr = load_mono(wav_path, sr=TARGET_SR)
     duration_s = float(len(audio) / sr)
@@ -186,12 +207,56 @@ def _process_one(
         result["rests"] = rests
         result["events"] = timeline
 
-    json_path = output_dir / f"{wav_path.stem}_notes.json"
-    with json_path.open("w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2)
-    result["_json_path"] = str(json_path)
+    # Song ID + published score attach (local PD catalog). Never fails the run
+    # when a public score is missing — fall back to audio transcription.
+    want_identify = identify or score_source in ("auto", "catalog")
+    use_catalog_score = False
+    if want_identify:
+        hyp_midi = [int(n["midi"]) for n in note_dicts]
+        identification = identify_sequence(
+            hyp_midi,
+            catalog=catalog_entries if catalog_entries is not None else [],
+        )
+        if score_source == "transcribe":
+            # Still record match metadata, but keep transcription sheet output.
+            identification.score_source = "transcribe"
+            if identification.matched:
+                identification.reason = "catalog_match_metadata_only"
+        elif score_source == "catalog" and not identification.matched:
+            identification.score_source = "transcribe"
+            identification.reason = (
+                identification.reason + "_fallback_transcribe"
+                if identification.reason
+                else "catalog_miss_fallback_transcribe"
+            )
+        elif score_source == "auto" and not identification.matched:
+            identification.score_source = "transcribe"
 
-    if export_musicxml:
+        use_catalog_score = (
+            identification.matched
+            and identification.score_source == "catalog"
+            and score_source in ("auto", "catalog")
+        )
+        result = attach_catalog_score(
+            result,
+            identification,
+            output_dir=output_dir,
+            stem=wav_path.stem,
+            # Defer MusicXML/MIDI to the block below when using transcription;
+            # when using catalog, attach_catalog_score writes them.
+            export_musicxml=export_musicxml and use_catalog_score,
+            export_midi=export_midi and use_catalog_score,
+            bpm=bpm_override,
+        )
+        result["score_source"] = (
+            "catalog" if use_catalog_score else "transcribe"
+        )
+    else:
+        result["score_source"] = "transcribe"
+
+    json_path = output_dir / f"{wav_path.stem}_notes.json"
+
+    if export_musicxml and not use_catalog_score:
         if skip_rhythm or not result.get("events"):
             print(
                 f"  warning: MusicXML skipped for {wav_path.name} "
@@ -202,7 +267,7 @@ def _process_one(
             write_musicxml(result, xml_path, title=wav_path.stem)
             result["_musicxml_path"] = str(xml_path)
 
-    if export_midi:
+    if export_midi and not use_catalog_score:
         if skip_rhythm or not result.get("events"):
             print(
                 f"  warning: MIDI skipped for {wav_path.name} "
@@ -212,6 +277,10 @@ def _process_one(
             mid_path = output_dir / f"{wav_path.stem}.mid"
             write_midi(result, mid_path)
             result["_midi_path"] = str(mid_path)
+
+    with json_path.open("w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
+    result["_json_path"] = str(json_path)
 
     return result
 
@@ -253,6 +322,23 @@ def _print_summary(result: dict) -> None:
     if result.get("_midi_path"):
         print(f"  midi → {result['_midi_path']}")
 
+    ident = result.get("identification")
+    if ident:
+        if ident.get("matched"):
+            print(
+                f"  identify: MATCH  {ident.get('title')}  "
+                f"conf={ident.get('confidence'):.2f}  "
+                f"edition={ident.get('edition')}  "
+                f"score_source={result.get('score_source')}"
+            )
+        else:
+            print(
+                f"  identify: no match ({ident.get('reason')}, "
+                f"best_conf={ident.get('confidence', 0):.2f}) → "
+                f"fallback={ident.get('fallback', 'audio_transcription')}  "
+                f"score_source={result.get('score_source')}"
+            )
+
     rests = result.get("rests") or []
     for r in rests[:8]:
         dur_val = r.get("duration_value", "?")
@@ -282,9 +368,12 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Monophonic cello WAV → multi-note pyin transcription, "
             "tempo/key/rhythm quantization (notes + rests), optional "
-            "MusicXML/MIDI sheet export, and optional MERT-v1-95M "
-            "frame embeddings. Tempo/key are inferred from audio "
-            "(never from filenames); use --bpm / --key to override."
+            "song ID against a local public-domain catalog (attach "
+            "published score on confident match; otherwise keep the "
+            "audio transcription), optional MusicXML/MIDI sheet export, "
+            "and optional MERT-v1-95M frame embeddings. Tempo/key are "
+            "inferred from audio (never from filenames); use --bpm / "
+            "--key to override."
         ),
     )
     p.add_argument(
@@ -420,6 +509,36 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable onset-based splits (pitch-change / gaps only)",
     )
+    p.add_argument(
+        "--identify",
+        action="store_true",
+        help=(
+            "Match the transcribed pitch sequence against the local "
+            "public-domain cello catalog and record match metadata. "
+            "Implies --score-source auto unless --score-source is set."
+        ),
+    )
+    p.add_argument(
+        "--score-source",
+        choices=SCORE_SOURCES,
+        default=None,
+        help=(
+            "Where sheet MusicXML/MIDI come from: "
+            "auto (catalog on confident match, else transcription), "
+            "transcribe (always audio transcription; default without "
+            "--identify), catalog (prefer published PD score; still "
+            "falls back to transcription if unmatched — never fails). "
+            "Default: auto with --identify, else transcribe."
+        ),
+    )
+    p.add_argument(
+        "--catalog",
+        default=str(DEFAULT_CATALOG_PATH),
+        help=(
+            "Path to local catalog JSON "
+            f"(default: {DEFAULT_CATALOG_PATH})"
+        ),
+    )
     return p
 
 
@@ -429,6 +548,12 @@ def main(argv: list[str] | None = None) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    score_source = _resolve_score_source(
+        score_source=args.score_source,
+        identify=args.identify,
+    )
+    want_identify = args.identify or score_source in ("auto", "catalog")
+
     try:
         quantize_cfg = resolve_quantize_preset(
             args.quantize,
@@ -437,6 +562,19 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
+
+    catalog_entries = None
+    if want_identify:
+        catalog_entries = load_catalog(args.catalog)
+        print(
+            f"Catalog: {len(catalog_entries)} piece(s) from {args.catalog} "
+            f"(score-source={score_source})"
+        )
+        if not catalog_entries:
+            print(
+                "  warning: empty catalog — will fall back to audio "
+                "transcription for every file"
+            )
 
     mert_bundle = None
     if not args.skip_mert:
@@ -463,6 +601,9 @@ def main(argv: list[str] | None = None) -> int:
             no_edge_rests=args.no_edge_rests,
             export_musicxml=args.musicxml,
             export_midi=args.midi,
+            identify=args.identify,
+            score_source=score_source,
+            catalog_entries=catalog_entries,
         )
         _print_summary(result)
 
