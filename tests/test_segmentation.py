@@ -116,3 +116,20 @@ def test_trim_trailing_low_confidence():
     trimmed = trim_trailing_low_confidence(notes, gap_sec=0.8, max_confidence=0.18)
     assert len(trimmed) == 2
     assert trimmed[-1].midi == 62
+
+
+def test_resolve_octave_ambiguities_lifts_low_conf_under_melody():
+    """Low-conf B2 between D3 and B3 should lift to B3; high-conf stays."""
+    from cello_note_detector.audio.pitch_baseline import resolve_octave_ambiguities
+
+    notes = [
+        _ev(43, 0.0, 0.2, conf=0.7),   # G2 locked
+        _ev(50, 0.2, 0.2, conf=0.6),   # D3 locked
+        _ev(47, 0.4, 0.2, conf=0.05),  # B2 uncertain → B3
+        _ev(57, 0.6, 0.2, conf=0.05),  # A3 already ok / or A2→A3
+        _ev(59, 0.8, 0.2, conf=0.5),   # B3 locked
+    ]
+    # Fix A: use A2 low-conf
+    notes[3] = _ev(45, 0.6, 0.2, conf=0.05)
+    fixed = resolve_octave_ambiguities(notes, lock_conf=0.20)
+    assert [e.midi for e in fixed] == [43, 50, 59, 57, 59]

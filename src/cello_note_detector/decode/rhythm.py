@@ -90,7 +90,9 @@ EQUAL_STREAM_MIN_NOTES = 8
 EQUAL_STREAM_MAX_IOI_CV = 0.35
 EQUAL_STREAM_MIN_IOI_SEC = 0.05
 EQUAL_STREAM_MAX_IOI_SEC = 0.90
-EQUAL_STREAM_HOLD_MULT = 1.85  # held notes ≥ this × unit → integer multiples
+# Held notes shorter than this × stream unit still map to one written unit
+# (performance lengthening / rubato → equal sixteenths). Higher = steadier.
+EQUAL_STREAM_HOLD_MULT = 2.5
 EQUAL_STREAM_REST_SUPPRESS_MULT = 1.35  # suppress micro-gaps under this × unit
 
 QUANTIZE_PRESETS: dict[str, dict] = {

@@ -559,72 +559,80 @@ def correct_cello_octave_errors(
     return out
 
 
-def smooth_cello_octaves(
+DEFAULT_OCTAVE_LOCK_CONF = 0.20
+
+
+def resolve_octave_ambiguities(
     events: list[NoteEvent],
     *,
+    lock_conf: float = DEFAULT_OCTAVE_LOCK_CONF,
+    open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
+    open_bonus: float = 6.0,
     midi_min: int = 36,
     midi_max: int = 84,
-    center_midi: float = 55.0,
-    center_weight: float = 1.35,
-    open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
-    open_string_bonus: float = 5.0,
-    max_confidence: float = 0.18,
-    min_leap_to_fix: int = 8,
 ) -> list[NoteEvent]:
-    """Rechoose ±1 octave for *low-confidence* notes to smooth cello register.
+    """Viterbi ±1 octave repair for low-confidence notes (piece-agnostic).
 
-    Only rewrites uncertain pyin estimates (``confidence <= max_confidence``)
-    when an alternate octave clearly reduces an awkward leap. Open-string
-    pedals keep a bonus so G2 is not lifted to G3. Piece-agnostic.
+    High-confidence pitches stay locked. Uncertain notes may move ±1 octave
+    to minimize melodic leap cost, with a bonus for cello open-string pedals
+    so G2 is preferred over G3 when both are reachable.
     """
-    if len(events) < 2:
+    n = len(events)
+    if n < 2:
         return events
 
-    def _rewrite(ev: NoteEvent, midi: int) -> NoteEvent:
-        if midi == ev.midi:
-            return ev
-        return NoteEvent(
-            pitch_hz=round(float(librosa.midi_to_hz(midi)), 4),
-            midi=int(midi),
-            note=librosa.midi_to_note(midi),
-            onset=ev.onset,
-            offset=ev.offset,
-            duration=ev.duration,
-            confidence=ev.confidence,
-        )
-
-    out: list[NoteEvent] = [events[0]]
-    for ev in events[1:]:
-        prev = int(out[-1].midi)
-        if float(ev.confidence) > max_confidence:
-            out.append(ev)
-            continue
-        cands = [
-            int(ev.midi) + 12 * k
-            for k in (-1, 0, 1)
-            if midi_min <= int(ev.midi) + 12 * k <= midi_max
-        ]
-        if not cands:
-            out.append(ev)
-            continue
-
-        def _score(c: int) -> tuple:
-            leap = abs(c - prev)
-            reg = abs(c - center_midi)
-            bonus = -open_string_bonus if c in open_strings else 0.0
-            return (leap + center_weight * reg + bonus, reg, -c)
-
-        best = min(cands, key=_score)
-        # Only rewrite clear octave jumps (leap ≥ octave-ish) when an
-        # alternate octave is closer to the prior note / register.
-        if (
-            best != ev.midi
-            and abs(int(ev.midi) - prev) >= min_leap_to_fix
-            and abs(best - prev) < abs(int(ev.midi) - prev) - 1
-        ):
-            out.append(_rewrite(ev, best))
+    cands: list[list[int]] = []
+    for ev in events:
+        if float(ev.confidence) >= lock_conf:
+            cands.append([int(ev.midi)])
         else:
+            opts = [
+                int(ev.midi) + 12 * k
+                for k in (-1, 0, 1)
+                if midi_min <= int(ev.midi) + 12 * k <= midi_max
+            ]
+            cands.append(opts or [int(ev.midi)])
+
+    inf = 1e18
+    cost = [[inf] * len(cands[i]) for i in range(n)]
+    back = [[-1] * len(cands[i]) for i in range(n)]
+    for j, c in enumerate(cands[0]):
+        cost[0][j] = -open_bonus if c in open_strings else 0.0
+    for i in range(1, n):
+        for j, c in enumerate(cands[i]):
+            bonus = -open_bonus if c in open_strings else 0.0
+            best = inf
+            bk = -1
+            for k, prev in enumerate(cands[i - 1]):
+                tot = cost[i - 1][k] + abs(c - prev) + bonus
+                if tot < best:
+                    best = tot
+                    bk = k
+            cost[i][j] = best
+            back[i][j] = bk
+
+    j = int(min(range(len(cost[-1])), key=lambda t: cost[-1][t]))
+    chosen = [0] * n
+    for i in range(n - 1, -1, -1):
+        chosen[i] = cands[i][j]
+        j = back[i][j] if i > 0 else -1
+
+    out: list[NoteEvent] = []
+    for ev, midi in zip(events, chosen):
+        if midi == ev.midi:
             out.append(ev)
+            continue
+        out.append(
+            NoteEvent(
+                pitch_hz=round(float(librosa.midi_to_hz(midi)), 4),
+                midi=int(midi),
+                note=librosa.midi_to_note(midi),
+                onset=ev.onset,
+                offset=ev.offset,
+                duration=ev.duration,
+                confidence=ev.confidence,
+            )
+        )
     return out
 
 
@@ -716,10 +724,10 @@ def transcribe_notes(
         events = merge_adjacent_near_duplicates(events)
     n_pre_octave = len(events)
     if octave_correct:
-        # Spectral open-string harmonic snap (G3→G2 etc.). Melodic ±1
-        # octave smooth is available but opt-in — aggressive smoothing
-        # can hurt clean takes while helping noisy ones.
+        # Spectral open-string harmonic snap, then Viterbi ±1 octave repair
+        # for low-confidence notes only (high-confidence pitches stay locked).
         events = correct_cello_octave_errors(events, audio, sr=sr)
+        events = resolve_octave_ambiguities(events)
     n_pre_trim = len(events)
     if trim_trailing:
         events = trim_trailing_low_confidence(events)
