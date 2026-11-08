@@ -32,6 +32,14 @@ def test_nearest_duration_quarter():
     assert beats == 1.0
 
 
+def test_nearest_duration_prefers_longer_near_fit():
+    # 0.85 beats is between dotted-eighth (0.75) and quarter (1.0);
+    # long-bias should prefer the quarter for readable scores.
+    name, beats = nearest_duration_value(0.85)
+    assert name == "quarter"
+    assert beats == 1.0
+
+
 def test_quantize_interval_matches_name_and_beats():
     q = quantize_interval(0.0, 0.6, bpm=100.0)  # 1.0 beat
     assert q.duration_value == "quarter"
