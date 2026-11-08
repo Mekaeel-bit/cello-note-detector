@@ -60,8 +60,8 @@ DURATION_CATALOG = DURATION_CATALOG_FINE
 DEFAULT_GRID_BEATS = 0.5
 DEFAULT_MIN_BPM = 50.0
 DEFAULT_MAX_BPM = 180.0
-DEFAULT_MIN_REST_SEC = 0.12
-DEFAULT_MIN_REST_BEATS = 0.4
+DEFAULT_MIN_REST_SEC = 0.16
+DEFAULT_MIN_REST_BEATS = 0.5
 DEFAULT_MIN_NOTE_BEATS = 0.5
 # Prefer note-onset / spectral IOI tempo when beat_track disagrees.
 IOI_TEMPO_WEIGHT = 0.7
@@ -75,15 +75,15 @@ QUANTIZE_PRESETS: dict[str, dict] = {
     "coarse": {
         "grid_beats": 0.5,
         "catalog": DURATION_CATALOG_COARSE,
-        "min_rest_sec": 0.15,
+        "min_rest_sec": 0.18,
         "min_rest_beats": 0.5,
         "min_note_beats": 0.5,
     },
     "medium": {
         "grid_beats": 0.5,
         "catalog": DURATION_CATALOG_MEDIUM,
-        "min_rest_sec": 0.12,
-        "min_rest_beats": 0.4,
+        "min_rest_sec": 0.16,
+        "min_rest_beats": 0.5,
         "min_note_beats": 0.5,
     },
     "fine": {
@@ -95,6 +95,8 @@ QUANTIZE_PRESETS: dict[str, dict] = {
     },
 }
 DEFAULT_QUANTIZE = "medium"
+# Soft bias: prefer a longer catalog value when nearly as close (readable).
+DURATION_LONG_BIAS = 0.12
 
 
 @dataclass(frozen=True)
@@ -183,17 +185,19 @@ def _tempo_from_note_durations(
     *,
     min_bpm: float,
     max_bpm: float,
+    max_beat_sec: float = 0.85,
 ) -> float | None:
     """Median sounding-note length → BPM, assuming notes ≈ one beat.
 
     More stable than onset IOIs when intentional rests sit between notes
-    (IOI then spans note+rest = two beats). Ignores short vibrato flicker.
+    (IOI then spans note+rest = two beats). Ignores short vibrato flicker
+    and very long sustains (multi-beat notes would read an octave low).
     """
     durs = np.asarray(
         [
             d
             for d in durations
-            if d is not None and d >= MIN_TEMPO_NOTE_DUR_SEC
+            if d is not None and MIN_TEMPO_NOTE_DUR_SEC <= float(d) <= max_beat_sec
         ],
         dtype=np.float64,
     )
@@ -247,8 +251,13 @@ def _duration_fit_score(
     bpm: float,
     *,
     catalog: Sequence[tuple[float, str]] = DURATION_CATALOG_MEDIUM,
+    max_score_beats: float = 4.0,
 ) -> float:
-    """Lower is better: mean absolute error of durations vs nearest catalog value."""
+    """Lower is better: mean absolute error of durations vs nearest catalog value.
+
+    Notes longer than ``max_score_beats`` at the candidate tempo are capped
+    so multi-beat sustains do not pull octave resolve toward half-tempo.
+    """
     durs = [
         float(d)
         for d in durations_sec
@@ -259,8 +268,13 @@ def _duration_fit_score(
     errs: list[float] = []
     for d in durs:
         beats = seconds_to_beats(float(d), bpm)
-        _, nearest = nearest_duration_value(beats, catalog=catalog)
-        errs.append(abs(beats - nearest))
+        # Cap before nearest-catalog so a 6-beat sustain @122 does not
+        # score worse than a 3-beat reading @61.
+        scored = min(beats, max_score_beats)
+        _, nearest = nearest_duration_value(
+            scored, catalog=catalog, long_bias=0.0
+        )
+        errs.append(abs(scored - nearest))
     return float(np.mean(errs))
 
 
@@ -408,25 +422,39 @@ def estimate_tempo(
     method = "librosa.beat.beat_track"
     bpm = audio_bpm
 
-    # When intentional rests sit between notes, spectral/note IOIs often
-    # span note+rest (= 2 beats) and read an octave low. Prefer sounding-
-    # note duration tempo in that case. Otherwise spectral onsets beat
-    # vibrato-contaminated note-split IOIs.
+    # Spectral onset IOI is the primary pulse for real cello phrases
+    # (stable vs vibrato note-splits and multi-beat sustains). Duration
+    # tempo only wins when spectral is missing / out of range and the
+    # note lengths look like single-beat articulations (rest-gap clips).
     def _octaves_apart(a: float, b: float) -> float:
         return abs(np.log2(max(a, 1e-6) / max(b, 1e-6)))
 
-    duration_vs_spectral = (
-        dur_bpm is not None
-        and spectral_bpm is not None
-        and _octaves_apart(dur_bpm, spectral_bpm) > 0.35
-    )
-    duration_vs_ioi = (
-        dur_bpm is not None
-        and ioi_bpm is not None
-        and _octaves_apart(dur_bpm, ioi_bpm) > 0.35
-    )
+    def _in_midrange(v: float) -> bool:
+        return 70.0 <= v <= 140.0
 
-    if dur_bpm is not None and (duration_vs_spectral or duration_vs_ioi or spectral_bpm is None):
+    if spectral_bpm is not None and _in_midrange(spectral_bpm):
+        if dur_bpm is not None and _octaves_apart(dur_bpm, spectral_bpm) < 0.25:
+            bpm = 0.45 * spectral_bpm + 0.55 * dur_bpm
+            method = "blend_spectral_note_duration"
+        else:
+            ratio = max(audio_bpm, spectral_bpm) / max(
+                1e-6, min(audio_bpm, spectral_bpm)
+            )
+            if ratio > 1.2:
+                bpm = spectral_bpm
+                method = "spectral_onset_ioi"
+            else:
+                bpm = (
+                    (1.0 - IOI_TEMPO_WEIGHT) * audio_bpm
+                    + IOI_TEMPO_WEIGHT * spectral_bpm
+                )
+                method = "blend_beat_track_spectral_onset"
+        bpm = _clamp_bpm(bpm, min_bpm=min_bpm, max_bpm=max_bpm)
+    elif dur_bpm is not None and (
+        spectral_bpm is None
+        or not _in_midrange(spectral_bpm)
+        or _octaves_apart(dur_bpm, spectral_bpm) > 0.35
+    ):
         if spectral_bpm is not None and _octaves_apart(dur_bpm, spectral_bpm) < 0.25:
             bpm = 0.35 * spectral_bpm + 0.65 * dur_bpm
             method = "blend_spectral_note_duration"
@@ -438,18 +466,8 @@ def estimate_tempo(
             method = "note_duration_tempo"
         bpm = _clamp_bpm(bpm, min_bpm=min_bpm, max_bpm=max_bpm)
     elif spectral_bpm is not None:
-        ratio = max(audio_bpm, spectral_bpm) / max(
-            1e-6, min(audio_bpm, spectral_bpm)
-        )
-        if ratio > 1.2:
-            bpm = spectral_bpm
-            method = "spectral_onset_ioi"
-        else:
-            bpm = (
-                (1.0 - IOI_TEMPO_WEIGHT) * audio_bpm
-                + IOI_TEMPO_WEIGHT * spectral_bpm
-            )
-            method = "blend_beat_track_spectral_onset"
+        bpm = spectral_bpm
+        method = "spectral_onset_ioi"
         bpm = _clamp_bpm(bpm, min_bpm=min_bpm, max_bpm=max_bpm)
     elif ioi_bpm is not None:
         ratio = max(bpm, ioi_bpm) / max(1e-6, min(bpm, ioi_bpm))
@@ -466,20 +484,25 @@ def estimate_tempo(
         bpm = _clamp_bpm(bpm, min_bpm=min_bpm, max_bpm=max_bpm)
 
     # Resolve half/double tempo using sounding-note duration fit.
-    # Also consider duration/spectral estimates as extra candidates so a
-    # half-tempo seed can still jump to the true pulse.
+    # Prefer spectral as the octave hint when it sits in a practice range.
     if note_durations:
+        hint = (
+            spectral_bpm
+            if (spectral_bpm is not None and _in_midrange(spectral_bpm))
+            else dur_bpm
+        )
+        extras: list[tuple[str, float]] = []
+        if dur_bpm is not None:
+            extras.append(("duration", float(dur_bpm)))
+        if spectral_bpm is not None:
+            extras.append(("spectral", float(spectral_bpm)))
         resolved, resolve_tag = _pick_bpm_with_octave_fix(
             bpm,
             note_durations,
             min_bpm=min_bpm,
             max_bpm=max_bpm,
-            spectral_hint=spectral_bpm if not duration_vs_spectral else dur_bpm,
-            extra_candidates=(
-                [("duration", dur_bpm)]
-                if dur_bpm is not None
-                else None
-            ),
+            spectral_hint=hint,
+            extra_candidates=extras or None,
         )
         bpm = resolved
         method = f"{method}+{resolve_tag}"
@@ -547,23 +570,34 @@ def nearest_duration_value(
     *,
     catalog: Sequence[tuple[float, str]] = DURATION_CATALOG_MEDIUM,
     min_beats: float = 0.0,
+    long_bias: float = DURATION_LONG_BIAS,
 ) -> tuple[str, float]:
-    """Map a duration in beats to the nearest named note/rest value."""
+    """Map a duration in beats to the nearest named note/rest value.
+
+    Prefers longer / coarser catalog entries when the absolute error is
+    within ``long_bias`` of the tightest fit — fewer 16th/tied fragments.
+    """
     if duration_beats <= 0:
         return "zero", 0.0
     target = max(float(duration_beats), float(min_beats))
-    best_name = catalog[-1][1]
-    best_beats = catalog[-1][0]
-    best_err = abs(target - best_beats)
-    for beats, name in catalog:
-        if beats + 1e-9 < min_beats:
-            continue
-        err = abs(target - beats)
-        # Prefer closer; on ties prefer the catalog entry (coarser first).
-        if err < best_err - 1e-9:
-            best_err = err
-            best_name = name
-            best_beats = beats
+    candidates = [
+        (beats, name)
+        for beats, name in catalog
+        if beats + 1e-9 >= min_beats
+    ]
+    if not candidates:
+        beats, name = catalog[-1]
+        return name, float(beats)
+
+    best_err = min(abs(target - beats) for beats, _ in candidates)
+    viable = [
+        (beats, name)
+        for beats, name in candidates
+        if abs(target - beats) <= best_err + long_bias + 1e-9
+    ]
+    # Longest first; on equal length, closer fit; stable for ties.
+    viable.sort(key=lambda bn: (-bn[0], abs(target - bn[0])))
+    best_beats, best_name = viable[0]
     return best_name, float(best_beats)
 
 

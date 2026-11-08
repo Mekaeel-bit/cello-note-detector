@@ -2,7 +2,7 @@
 
 Hackathon app for identifying cello notes from **monophonic audio** (video / fingerings later).
 
-**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
@@ -69,15 +69,15 @@ Useful flags:
 | `--musicxml` | also write bass-clef `.musicxml` next to the JSON |
 | `--midi` | also write Type-1 `.mid` next to the JSON |
 | `--grid-beats 0.5` | override snap grid in beats (preset default: eighth) |
-| `--min-rest-sec 0.12` | minimum silence gap emitted as a rest |
+| `--min-rest-sec 0.16` | minimum silence gap emitted as a rest |
 | `--no-edge-rests` | omit leading/trailing rests; keep inter-note gaps only |
 | `--save-embeddings` | also write `[T, 768]` `.npy` next to the JSON |
 | `--device cpu` | force CPU |
 | `-o outputs` | output directory (default: `outputs/`) |
 | `--no-onsets` | disable onset-based note splits |
-| `--gap-tolerance 0.08` | bridge short unvoiced gaps inside one note |
-| `--min-duration 0.06` | drop flicker shorter than this |
-| `--median-filter-size 9` | MIDI median window to reduce vibrato flicker |
+| `--gap-tolerance 0.10` | bridge short unvoiced gaps inside one note |
+| `--min-duration 0.08` | drop flicker shorter than this |
+| `--median-filter-size 11` | MIDI median window to reduce vibrato flicker |
 
 ### Quantize presets
 

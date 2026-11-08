@@ -151,23 +151,26 @@ def _split_beats_across_measures(
     return chunks
 
 
+# Preferred notation atoms (longest first) for within-measure writing.
+_NOTATION_ATOMS: tuple[tuple[str, int, float], ...] = (
+    ("whole", 0, 4.0),
+    ("half", 1, 3.0),  # dotted half
+    ("half", 0, 2.0),
+    ("quarter", 1, 1.5),
+    ("quarter", 0, 1.0),
+    ("eighth", 1, 0.75),
+    ("eighth", 0, 0.5),
+    ("16th", 1, 0.375),
+    ("16th", 0, 0.25),
+    ("32nd", 0, 0.125),
+)
+
+
 def _beats_to_type_and_dots(beats: float) -> tuple[str, int]:
     """Map a beat length to MusicXML type + dot count."""
-    for _name, (typ, dotted, b) in _DURATION_TYPES.items():
+    for typ, dots, b in _NOTATION_ATOMS:
         if abs(b - beats) < 1e-6:
-            return typ, (1 if dotted else 0)
-    for typ, b in (
-        ("whole", 4.0),
-        ("half", 2.0),
-        ("quarter", 1.0),
-        ("eighth", 0.5),
-        ("16th", 0.25),
-        ("32nd", 0.125),
-    ):
-        if abs(b - beats) < 1e-6:
-            return typ, 0
-        if abs(b * 1.5 - beats) < 1e-6:
-            return typ, 1
+            return typ, dots
     for typ, b in (
         ("whole", 4.0),
         ("half", 2.0),
@@ -179,6 +182,27 @@ def _beats_to_type_and_dots(beats: float) -> tuple[str, int]:
         if b <= beats + 1e-9:
             return typ, 0
     return "32nd", 0
+
+
+def decompose_beats_for_notation(beats: float) -> list[float]:
+    """Greedy longest-first split into standard note values (few ties)."""
+    left = float(beats)
+    parts: list[float] = []
+    if left <= 1e-9:
+        return parts
+    atoms = [b for _t, _d, b in _NOTATION_ATOMS]
+    while left > 1e-9:
+        take = None
+        for size in atoms:
+            if size <= left + 1e-9:
+                take = size
+                break
+        if take is None:
+            parts.append(max(round(left, 6), 0.125))
+            break
+        parts.append(take)
+        left = round(left - take, 6)
+    return parts
 
 
 def _append_pitch(
@@ -344,14 +368,24 @@ def build_musicxml(
             filled = 0.0
             remaining = measure_beats
 
-        chunks = _split_beats_across_measures(
+        measure_chunks = _split_beats_across_measures(
             beats,
             remaining_in_measure=remaining,
             measure_beats=measure_beats,
         )
+        # Further split each measure slice into standard notation atoms so
+        # awkward remainders become a few tied values instead of a wrong type.
+        written: list[tuple[float, bool]] = []  # (beats, is_rest_piece)
+        for chunk in measure_chunks:
+            atoms = decompose_beats_for_notation(chunk)
+            if not atoms:
+                continue
+            for atom in atoms:
+                written.append((atom, is_rest))
 
-        n_chunks = len(chunks)
-        for i, chunk in enumerate(chunks):
+        n_sounding = sum(1 for _b, rest in written if not rest)
+        sounding_i = 0
+        for chunk_beats, chunk_rest in written:
             if filled >= measure_beats - 1e-9:
                 measure_num += 1
                 measure = ET.SubElement(
@@ -360,24 +394,27 @@ def build_musicxml(
                 filled = 0.0
 
             tie: str | None = None
-            if not is_rest and n_chunks > 1:
-                if i == 0:
+            if not chunk_rest and n_sounding > 1:
+                if sounding_i == 0:
                     tie = "start"
-                elif i == n_chunks - 1:
+                elif sounding_i == n_sounding - 1:
                     tie = "stop"
                 else:
                     tie = "continue"
+                sounding_i += 1
+            elif not chunk_rest:
+                sounding_i += 1
 
             _append_note_element(
                 measure,
-                is_rest=is_rest,
+                is_rest=chunk_rest,
                 midi=midi,
-                beats=chunk,
+                beats=chunk_beats,
                 divisions=divisions,
                 tie=tie,
                 prefer_flats=prefer_flats,
             )
-            filled += chunk
+            filled += chunk_beats
 
     pad = measure_beats - filled
     if pad > 1e-6:
