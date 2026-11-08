@@ -1,0 +1,319 @@
+{
+  "schema": "cello_av_fusion_v0",
+  "source": "data/video/clips/mspho_a_major_3oct_front.mp4",
+  "audio_path": "outputs/video/mspho_a_major_3oct_front_audio.wav",
+  "video_path": "data/video/clips/mspho_a_major_3oct_front.mp4",
+  "video_only_path": "outputs/video/mspho_a_major_3oct_front_video_only.mp4",
+  "audio_alignment": {
+    "ok": true,
+    "method": "ffmpeg-extract + pyin",
+    "num_notes": 54,
+    "note": "Rough sync by shared clock; no AV drift correction.",
+    "rms": 1860.78,
+    "audio_path": "outputs/video/mspho_a_major_3oct_front_audio.wav",
+    "video_path": "data/video/clips/mspho_a_major_3oct_front.mp4",
+    "video_only_path": "outputs/video/mspho_a_major_3oct_front_video_only.mp4"
+  },
+  "fusion": {
+    "ok": true,
+    "method": "pyin pitch \u2192 open-string/position hypotheses \u2229 left-hand curl/neck proxy; bow string from pitch",
+    "strings": [
+      "C",
+      "G",
+      "D",
+      "A"
+    ],
+    "num_audio_notes": 54,
+    "num_fused_events": 23,
+    "limits": [
+      "Hackathon fusion demo \u2014 not concert fingerings.",
+      "String ID is the lowest-position pitch hypothesis re-ranked by hand height/curl.",
+      "Finger indices remain curl proxies constrained by sounding pitch.",
+      "Bow direction stays wrist-velocity; sounding string comes from pitch, not stick segmentation."
+    ]
+  },
+  "fused_notes_preview": [
+    {
+      "midi": 48,
+      "note": "C3",
+      "onset": 0.0427,
+      "offset": 0.1493,
+      "confidence": 0.01,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "mid",
+      "semitones_above_open": 5,
+      "fingering": {
+        "finger": 3,
+        "label": "finger_3",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 57,
+      "note": "A3",
+      "onset": 2.1973,
+      "offset": 2.4427,
+      "confidence": 0.3406,
+      "string": "A",
+      "bow_string": "A",
+      "position_band": "open",
+      "semitones_above_open": 0,
+      "fingering": {
+        "finger": 0,
+        "label": "open_preferred",
+        "confidence": 0.45,
+        "source": "pitch_open; curl ignored (open-string MIDI)",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 49,
+      "note": "C\u266f3",
+      "onset": 2.8587,
+      "offset": 2.9653,
+      "confidence": 0.01,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "mid",
+      "semitones_above_open": 6,
+      "fingering": {
+        "finger": 3,
+        "label": "finger_3",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 45,
+      "note": "A2",
+      "onset": 3.1467,
+      "offset": 4.0747,
+      "confidence": 0.5159,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 2,
+      "fingering": {
+        "finger": 1,
+        "label": "finger_1",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 49,
+      "note": "C\u266f3",
+      "onset": 4.1173,
+      "offset": 4.9067,
+      "confidence": 0.6712,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "mid",
+      "semitones_above_open": 6,
+      "fingering": {
+        "finger": 3,
+        "label": "finger_3",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 47,
+      "note": "B2",
+      "onset": 4.9067,
+      "offset": 5.6747,
+      "confidence": 0.5778,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 4,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 45,
+      "note": "A2",
+      "onset": 5.6747,
+      "offset": 6.5493,
+      "confidence": 0.5327,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 2,
+      "fingering": {
+        "finger": 1,
+        "label": "finger_1",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "midi": 47,
+      "note": "B2",
+      "onset": 6.592,
+      "offset": 7.296,
+      "confidence": 0.4716,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 4,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    }
+  ],
+  "fused_events_preview": [
+    {
+      "t": 0.067,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 3,
+      "fingering_label": "finger_3",
+      "midi": 48,
+      "note": "C3",
+      "bow_direction": "unknown",
+      "confidence": 0.33,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.133,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 3,
+      "fingering_label": "finger_3",
+      "midi": 48,
+      "note": "C3",
+      "bow_direction": "up",
+      "confidence": 0.33,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 2.202,
+      "type": "fused_note",
+      "string": "A",
+      "finger": 0,
+      "fingering_label": "open_preferred",
+      "midi": 57,
+      "note": "A3",
+      "bow_direction": "hold",
+      "confidence": 0.395,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 2.87,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 3,
+      "fingering_label": "finger_3",
+      "midi": 49,
+      "note": "C\u266f3",
+      "bow_direction": "up",
+      "confidence": 0.33,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 2.936,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 3,
+      "fingering_label": "finger_3",
+      "midi": 49,
+      "note": "C\u266f3",
+      "bow_direction": "hold",
+      "confidence": 0.33,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 3.203,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 45,
+      "note": "A2",
+      "bow_direction": "hold",
+      "confidence": 0.583,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 3.337,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 45,
+      "note": "A2",
+      "bow_direction": "down",
+      "confidence": 0.583,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 4.004,
+      "type": "fused_note",
+      "string": "G",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 45,
+      "note": "A2",
+      "bow_direction": "hold",
+      "confidence": 0.583,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    }
+  ]
+}

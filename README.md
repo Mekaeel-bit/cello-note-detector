@@ -4,7 +4,7 @@ Hackathon app for identifying cello notes from **monophonic audio**, plus a **vi
 
 **Current audio milestone:** multi-note monophonic melody transcription (pyin + onsets) with **cleaner same-pitch / vibrato merge** → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
 
-**Video sandbox (new):** front-facing cello clips → MediaPipe hand/pose timeline of approximate finger activity + bow direction (hackathon-honest, not concert accuracy). See [`data/video/README.md`](data/video/README.md).
+**Video sandbox:** front-facing cello clips → MediaPipe hand/pose timeline, optionally **fused with pyin pitch** for string-aware fingering + bow-string labels (hackathon-honest, not concert accuracy). See [`data/video/README.md`](data/video/README.md).
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
@@ -144,12 +144,18 @@ Bundled front-facing WMEA scale/etude clips (YouTube originals; IA mirrors — s
 pip install -r requirements-video.txt
 python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.mp4 \
   -o outputs/video --overlay --max-frames 180
-# optional rough AV sync
+# AV fusion: pyin pitch ∩ landmarks → string + fingering + bow string
+# (clip has audible cello; requires ffmpeg on PATH)
+python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
+  -o outputs/video --fuse --overlay --max-frames 180
+# Also writes outputs/video/mspho_a_major_3oct_front_audio.wav (+ _video_only.mp4);
+# fused JSON includes audio_path / video_path. Fails if WAV RMS is near silence.
+# optional rough AV sync without fusion
 python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \
   -o outputs/video --overlay --align-audio
 ```
 
-Writes `<stem>_video_timeline.json` (events + per-frame samples) and optional overlay JPEGs. Models download on first run into `data/video/models/`.
+Writes `<stem>_video_timeline.json` (events + per-frame samples), with `--fuse` also `<stem>_fused_timeline.json` + sample preview, and optional overlay JPEGs. Models download on first run into `data/video/models/`.
 
 ## Bach Prelude accuracy sandbox
 
