@@ -1,0 +1,463 @@
+{
+  "schema": "cello_av_fusion_v0",
+  "source": "data/video/clips/wmea_jr_scale_etude_front.mp4",
+  "fusion": {
+    "ok": true,
+    "method": "pyin pitch \u2192 open-string/position hypotheses \u2229 left-hand curl/neck proxy; bow string from pitch",
+    "strings": [
+      "C",
+      "G",
+      "D",
+      "A"
+    ],
+    "num_audio_notes": 54,
+    "num_fused_events": 111,
+    "limits": [
+      "Hackathon fusion demo \u2014 not concert fingerings.",
+      "String ID is the lowest-position pitch hypothesis re-ranked by hand height/curl.",
+      "Finger indices remain curl proxies constrained by sounding pitch.",
+      "Bow direction stays wrist-velocity; sounding string comes from pitch, not stick segmentation."
+    ]
+  },
+  "fused_notes_preview": [
+    {
+      "midi": 51,
+      "note": "D\u266f3",
+      "onset": 0.0,
+      "offset": 0.1493,
+      "confidence": 0.2417,
+      "string": "D",
+      "bow_string": "D",
+      "position_band": "low",
+      "semitones_above_open": 1,
+      "fingering": {
+        "finger": 1,
+        "label": "finger_1",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "D",
+          "semitones_above_open": 1,
+          "suggested_finger": 1,
+          "fusion_score": 0.5
+        },
+        {
+          "string": "G",
+          "semitones_above_open": 8,
+          "suggested_finger": 4,
+          "fusion_score": 6.05
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 15,
+          "suggested_finger": 4,
+          "fusion_score": 13.4
+        }
+      ]
+    },
+    {
+      "midi": 54,
+      "note": "F\u266f3",
+      "onset": 0.1707,
+      "offset": 0.384,
+      "confidence": 0.6883,
+      "string": "D",
+      "bow_string": "D",
+      "position_band": "low",
+      "semitones_above_open": 4,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "D",
+          "semitones_above_open": 4,
+          "suggested_finger": 2,
+          "fusion_score": 3.5
+        },
+        {
+          "string": "G",
+          "semitones_above_open": 11,
+          "suggested_finger": 4,
+          "fusion_score": 9.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 18,
+          "suggested_finger": 4,
+          "fusion_score": 16.4
+        }
+      ]
+    },
+    {
+      "midi": 55,
+      "note": "G3",
+      "onset": 0.384,
+      "offset": 0.5547,
+      "confidence": 0.6707,
+      "string": "D",
+      "bow_string": "D",
+      "position_band": "mid",
+      "semitones_above_open": 5,
+      "fingering": {
+        "finger": 3,
+        "label": "finger_3",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "D",
+          "semitones_above_open": 5,
+          "suggested_finger": 3,
+          "fusion_score": 3.1
+        },
+        {
+          "string": "G",
+          "semitones_above_open": 12,
+          "suggested_finger": 4,
+          "fusion_score": 10.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 19,
+          "suggested_finger": 4,
+          "fusion_score": 17.4
+        }
+      ]
+    },
+    {
+      "midi": 54,
+      "note": "F\u266f3",
+      "onset": 0.5973,
+      "offset": 1.1413,
+      "confidence": 0.7821,
+      "string": "D",
+      "bow_string": "D",
+      "position_band": "low",
+      "semitones_above_open": 4,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "D",
+          "semitones_above_open": 4,
+          "suggested_finger": 2,
+          "fusion_score": 3.5
+        },
+        {
+          "string": "G",
+          "semitones_above_open": 11,
+          "suggested_finger": 4,
+          "fusion_score": 9.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 18,
+          "suggested_finger": 4,
+          "fusion_score": 16.4
+        }
+      ]
+    },
+    {
+      "midi": 45,
+      "note": "A2",
+      "onset": 1.1947,
+      "offset": 1.3973,
+      "confidence": 0.2866,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 2,
+      "fingering": {
+        "finger": 1,
+        "label": "finger_1",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "G",
+          "semitones_above_open": 2,
+          "suggested_finger": 1,
+          "fusion_score": 1.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 9,
+          "suggested_finger": 4,
+          "fusion_score": 7.4
+        }
+      ]
+    },
+    {
+      "midi": 46,
+      "note": "A\u266f2",
+      "onset": 1.3973,
+      "offset": 1.5787,
+      "confidence": 0.3692,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 3,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "G",
+          "semitones_above_open": 3,
+          "suggested_finger": 2,
+          "fusion_score": 2.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 10,
+          "suggested_finger": 4,
+          "fusion_score": 8.4
+        }
+      ]
+    },
+    {
+      "midi": 45,
+      "note": "A2",
+      "onset": 1.5787,
+      "offset": 1.8027,
+      "confidence": 0.1086,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 2,
+      "fingering": {
+        "finger": 1,
+        "label": "finger_1",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "G",
+          "semitones_above_open": 2,
+          "suggested_finger": 1,
+          "fusion_score": 1.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 9,
+          "suggested_finger": 4,
+          "fusion_score": 7.4
+        }
+      ]
+    },
+    {
+      "midi": 46,
+      "note": "A\u266f2",
+      "onset": 1.8027,
+      "offset": 1.984,
+      "confidence": 0.5022,
+      "string": "G",
+      "bow_string": "G",
+      "position_band": "low",
+      "semitones_above_open": 3,
+      "fingering": {
+        "finger": 2,
+        "label": "finger_2",
+        "confidence": 0.65,
+        "source": "pitch_position \u2229 curl",
+        "curl_active": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "hypotheses": [
+        {
+          "string": "G",
+          "semitones_above_open": 3,
+          "suggested_finger": 2,
+          "fusion_score": 2.45
+        },
+        {
+          "string": "C",
+          "semitones_above_open": 10,
+          "suggested_finger": 4,
+          "fusion_score": 8.4
+        }
+      ]
+    }
+  ],
+  "fused_events_preview": [
+    {
+      "t": 0.0,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 51,
+      "note": "D\u266f3",
+      "bow_direction": "unknown",
+      "confidence": 0.446,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.133,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 1,
+      "fingering_label": "finger_1",
+      "midi": 51,
+      "note": "D\u266f3",
+      "bow_direction": "hold",
+      "confidence": 0.446,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.2,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 4,
+      "fingering_label": "finger_4",
+      "midi": 54,
+      "note": "F\u266f3",
+      "bow_direction": "down",
+      "confidence": 0.544,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.267,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 2,
+      "fingering_label": "finger_2",
+      "midi": 54,
+      "note": "F\u266f3",
+      "bow_direction": "down",
+      "confidence": 0.669,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.334,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 4,
+      "fingering_label": "finger_4",
+      "midi": 54,
+      "note": "F\u266f3",
+      "bow_direction": "down",
+      "confidence": 0.544,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.4,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 4,
+      "fingering_label": "finger_4",
+      "midi": 55,
+      "note": "G3",
+      "bow_direction": "hold",
+      "confidence": 0.535,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.467,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 3,
+      "fingering_label": "finger_3",
+      "midi": 55,
+      "note": "G3",
+      "bow_direction": "up",
+      "confidence": 0.66,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.534,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 4,
+      "fingering_label": "finger_4",
+      "midi": 55,
+      "note": "G3",
+      "bow_direction": "up",
+      "confidence": 0.535,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.801,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 2,
+      "fingering_label": "finger_2",
+      "midi": 54,
+      "note": "F\u266f3",
+      "bow_direction": "up",
+      "confidence": 0.716,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    },
+    {
+      "t": 0.934,
+      "type": "fused_note",
+      "string": "D",
+      "finger": 4,
+      "fingering_label": "finger_4",
+      "midi": 54,
+      "note": "F\u266f3",
+      "bow_direction": "hold",
+      "confidence": 0.591,
+      "note_detail": "pitch\u2192string + landmark-constrained finger; bow string from pitch"
+    }
+  ]
+}
