@@ -82,11 +82,25 @@ def test_reference_to_result_builds_exportable_timeline():
     entries = load_catalog(_CATALOG, repo_root=_REPO)
     entry = next(e for e in entries if e.id == "bwv1007_prelude")
     built = reference_to_result(entry, audio_path="demo.wav", bpm=60.0)
-    assert built["num_notes"] == 606
+    # Playable catalog edition (re-parsed LilyPond), not the eval reference tail.
+    assert built["num_notes"] >= 600
     assert built["events"][0]["midi"] == 43
     assert built["events"][0]["duration_value"] == "sixteenth"
     assert built["key"]["name"] == "G major"
     assert built["score_source"] == "catalog"
+    midis = [e["midi"] for e in built["events"]]
+    assert min(midis) >= 36  # cello C2 floor — no ledger-line garbage
+    assert max(midis) <= 72
+
+
+def test_catalog_score_json_playable_and_matches_verified_prefix():
+    entries = load_catalog(_CATALOG, repo_root=_REPO)
+    entry = next(e for e in entries if e.id == "bwv1007_prelude")
+    assert entry.score_json is not None and entry.score_json.is_file()
+    score = entry.score_data
+    midis = [int(m) for m in score["midi_sequence"]]
+    assert min(midis) >= 36
+    assert midis[:128] == entry.midi_sequence[:128]
 
 
 def test_attach_catalog_score_writes_artifacts(tmp_path: Path):
@@ -112,10 +126,13 @@ def test_attach_catalog_score_writes_artifacts(tmp_path: Path):
     )
     assert out["score_source"] == "catalog"
     assert out["identification"]["matched"] is True
-    assert (tmp_path / "Bach-cello-suite-1.musicxml").is_file()
+    assert out["identification"]["score_kind"] == "catalog_edition"
+    xml_path = tmp_path / "Bach-cello-suite-1.musicxml"
+    assert xml_path.is_file()
     assert (tmp_path / "Bach-cello-suite-1.mid").is_file()
     assert (tmp_path / "Bach-cello-suite-1_identification.json").is_file()
     assert (tmp_path / "Bach-cello-suite-1_catalog_reference.json").is_file()
+    assert (tmp_path / "Bach-cello-suite-1_catalog_score.json").is_file()
     meta = json.loads(
         (tmp_path / "Bach-cello-suite-1_identification.json").read_text(
             encoding="utf-8"
@@ -123,6 +140,14 @@ def test_attach_catalog_score_writes_artifacts(tmp_path: Path):
     )
     assert meta["title"].startswith("Bach Cello Suite")
     assert "Schirmer" in meta["edition"] or "Mutopia" in meta["edition"]
+    xml = xml_path.read_text(encoding="utf-8")
+    assert "Bach Cello Suite" in xml
+    # No sub-C2 garbage in the primary catalog MusicXML.
+    import re
+
+    octaves = [int(o) for o in re.findall(r"<octave>(\d)</octave>", xml)]
+    assert octaves
+    assert min(octaves) >= 2
 
 
 def test_attach_no_match_keeps_transcription_fallback(tmp_path: Path):

@@ -256,8 +256,18 @@ def _process_one(
 
     json_path = output_dir / f"{wav_path.stem}_notes.json"
 
-    if export_musicxml and not use_catalog_score:
-        if skip_rhythm or not result.get("events"):
+    if export_musicxml:
+        if use_catalog_score:
+            # Primary .musicxml already written from the PD catalog edition.
+            # Also keep the performance dump for A/B comparison.
+            if not skip_rhythm and result.get("events"):
+                tx_path = output_dir / f"{wav_path.stem}_transcribed.musicxml"
+                write_musicxml(result, tx_path, title=f"{wav_path.stem} (transcribed)")
+                result["_transcribed_musicxml_path"] = str(tx_path)
+                ident = result.get("identification")
+                if isinstance(ident, dict):
+                    ident["transcribed_musicxml"] = str(tx_path)
+        elif skip_rhythm or not result.get("events"):
             print(
                 f"  warning: MusicXML skipped for {wav_path.name} "
                 "(needs rhythm/events; omit --skip-rhythm)"
@@ -318,7 +328,16 @@ def _print_summary(result: dict) -> None:
         print(f"  … {result['num_notes'] - len(preview)} more notes")
 
     if result.get("_musicxml_path"):
-        print(f"  musicxml → {result['_musicxml_path']}")
+        kind = ""
+        ident_preview = result.get("identification") or {}
+        if result.get("score_source") == "catalog":
+            kind = "  [catalog edition — open this in MuseScore]"
+        print(f"  musicxml → {result['_musicxml_path']}{kind}")
+    if result.get("_transcribed_musicxml_path"):
+        print(
+            f"  transcribed musicxml → {result['_transcribed_musicxml_path']}  "
+            f"[performance dump; not the PD score]"
+        )
     if result.get("_midi_path"):
         print(f"  midi → {result['_midi_path']}")
 
@@ -329,7 +348,8 @@ def _print_summary(result: dict) -> None:
                 f"  identify: MATCH  {ident.get('title')}  "
                 f"conf={ident.get('confidence'):.2f}  "
                 f"edition={ident.get('edition')}  "
-                f"score_source={result.get('score_source')}"
+                f"score_source={result.get('score_source')}  "
+                f"score_notes={ident.get('score_note_count', '?')}"
             )
         else:
             print(

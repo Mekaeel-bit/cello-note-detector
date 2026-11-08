@@ -5,10 +5,17 @@ Prelude accuracy sandbox.
 
 | File | Role |
 |------|------|
-| `prelude_monophonic_reference.json` | Monophonic MIDI sequence + beat durations (primary eval target) |
+| `prelude_catalog_score.json` | **Playable** monophonic edition for MusicXML/MIDI attach (re-parsed from LilyPond) |
+| `prelude_monophonic_reference.json` | Eval target (hand-checked prefix; later notes are best-effort — do not use for MuseScore) |
 | `prelude_midi_sequence.json` | Compact pitch-only sequence |
-| `mutopia517_prelude.mid` | Mutopia compiler MIDI (may contain held-string overlaps — prefer the JSON) |
+| `mutopia517_prelude.mid` | Mutopia compiler MIDI (may contain held-string overlaps — prefer the catalog score JSON) |
 | `mutopia517_prelude.ly` | Mutopia LilyPond source (Schirmer 1916) |
+
+Regenerate the playable catalog score after editing the LilyPond:
+
+```bash
+python scripts/build_bwv1007_catalog_score.py
+```
 
 ## Provenance
 

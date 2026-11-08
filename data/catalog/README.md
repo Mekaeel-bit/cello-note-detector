@@ -13,11 +13,15 @@ editions. Online fetch is optional and not required for v1 — local JSON is eno
 ## Adding a piece
 
 1. Drop a monophonic reference under `data/reference/<piece_id>/` with:
-   - `midi_sequence`: list of MIDI ints
-   - `events`: `{midi, onset_beats, duration_beats, duration_value}` for score export
+   - `midi_sequence`: list of MIDI ints (used for song-ID matching)
+   - optional playable `score_json` with `events` for MusicXML/MIDI attach
+     (prefer a clean edition file if the match reference is eval-only)
    - provenance fields (`title`, `source_edition`, `imslp_work`, `key`, …)
-2. Append an entry to `catalog.json` pointing at that JSON.
+2. Append an entry to `catalog.json` pointing at `reference_json` and optional `score_json`.
 3. Keep `min_confidence` conservative so unknown solos fall back to audio transcription.
+
+On match, the primary `<stem>.musicxml` is always the catalog edition; the
+performance dump is written beside it as `<stem>_transcribed.musicxml`.
 
 ## Fallback policy
 

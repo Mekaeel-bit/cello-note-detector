@@ -141,7 +141,10 @@ MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity chec
 
 ## Song identification + published score
 
-The local catalog (`data/catalog/catalog.json`) currently includes **Bach Suite 1 Prélude** (Mutopia/Schirmer 1916 PD). On a confident match with `--identify` / `--score-source auto`, MusicXML/MIDI are generated from the **written reference** (not the rubato performance), and match metadata (`title`, `edition`, `confidence`) is written into the notes JSON plus `<stem>_identification.json`.
+The local catalog (`data/catalog/catalog.json`) currently includes **Bach Suite 1 Prélude** (Mutopia/Schirmer 1916 PD). On a confident match with `--identify` / `--score-source auto`, the **primary** `<stem>.musicxml` / `.mid` are the **full published catalog edition** (playable `prelude_catalog_score.json` from Mutopia LilyPond — not the performance dump). Match metadata goes in the notes JSON plus `<stem>_identification.json`. A side-by-side performance dump is also written as `<stem>_transcribed.musicxml`.
+
+**Open this in MuseScore after identify:** `outputs/bach_id/Bach-cello-suite-1.musicxml`  
+(Do **not** open `*_transcribed.musicxml` if you want the PD Prelude.)
 
 ```bash
 # Demo: identify long Prelude take → attach Mutopia/Schirmer score
@@ -158,11 +161,11 @@ python -m cello_note_detector data/multi_note_phrases/scale_c_major_cello.wav \
   -o outputs/fallback --skip-mert --identify --musicxml --midi
 ```
 
-| Outcome | Sheet MusicXML/MIDI | JSON |
-|---------|---------------------|------|
-| Confident catalog match (`auto` / `catalog`) | From PD reference | `identification.matched=true`, `score_source=catalog`, plus `catalog_score` |
-| No match / low confidence | From audio transcription | `identification.matched=false`, `fallback=audio_transcription` |
-| Default (no `--identify`) | Transcription (unchanged) | no `identification` block |
+| Outcome | Primary `<stem>.musicxml` | Also written | JSON |
+|---------|---------------------------|--------------|------|
+| Confident catalog match (`auto` / `catalog`) | **Full PD catalog edition** | `<stem>_transcribed.musicxml` (performance) | `identification.matched=true`, `score_source=catalog`, `score_kind=catalog_edition` |
+| No match / low confidence | Audio transcription | — | `identification.matched=false`, `fallback=audio_transcription` |
+| Default (no `--identify`) | Transcription (unchanged) | — | no `identification` block |
 
 Add more PD solos by dropping a monophonic reference under `data/reference/<id>/` and appending an entry to `data/catalog/catalog.json` (see that folder’s README). **Do not** scrape commercial editions.
 

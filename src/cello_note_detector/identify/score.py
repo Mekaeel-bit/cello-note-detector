@@ -58,10 +58,10 @@ def reference_to_result(
 ) -> dict[str, Any]:
     """Build a CLI-shaped result dict from a catalog reference for export.
 
-    Uses written pitch/rhythm from the Mutopia/Schirmer (or other PD) reference
-    rather than the performance transcription.
+    Uses the playable catalog edition (``score_json`` when present, else the
+    match reference) — never the performance transcription.
     """
-    ref = entry.reference
+    ref = entry.score_data
     events_in = ref.get("events") or []
     notes: list[dict[str, Any]] = []
     timeline: list[dict[str, Any]] = []
@@ -174,10 +174,14 @@ def attach_catalog_score(
         bpm=float(tempo_bpm),
     )
 
-    # Sidecar: copy the monophonic reference JSON next to outputs.
+    # Sidecar: copy match + playable score JSON next to outputs.
     ref_copy = output_dir / f"{stem}_catalog_reference.json"
     shutil.copy2(entry.reference_json, ref_copy)
     result["identification"]["catalog_reference_copy"] = str(ref_copy)
+    if entry.score_json and entry.score_json.is_file():
+        score_copy = output_dir / f"{stem}_catalog_score.json"
+        shutil.copy2(entry.score_json, score_copy)
+        result["identification"]["catalog_score_copy"] = str(score_copy)
 
     # Optional: copy Mutopia MIDI if present.
     if entry.midi_path and entry.midi_path.is_file():
@@ -186,18 +190,20 @@ def attach_catalog_score(
         result["identification"]["catalog_midi_copy"] = str(mid_copy)
 
     if export_musicxml:
+        # Primary MuseScore file MUST be the published catalog edition.
         xml_path = output_dir / f"{stem}.musicxml"
         write_musicxml(catalog_result, xml_path, title=entry.title)
         result["_musicxml_path"] = str(xml_path)
         result["identification"]["score_musicxml"] = str(xml_path)
-        result["identification"]["score_kind"] = "catalog_reference"
+        result["identification"]["score_kind"] = "catalog_edition"
+        result["identification"]["score_note_count"] = catalog_result["num_notes"]
 
     if export_midi:
         mid_path = output_dir / f"{stem}.mid"
         write_midi(catalog_result, mid_path)
         result["_midi_path"] = str(mid_path)
         result["identification"]["score_midi"] = str(mid_path)
-        result["identification"]["score_kind"] = "catalog_reference"
+        result["identification"]["score_kind"] = "catalog_edition"
 
     # Keep the performance transcription notes in the JSON, but mark that the
     # sheet artifacts came from the catalog when exported.

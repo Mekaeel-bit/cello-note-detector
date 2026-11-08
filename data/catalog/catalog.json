@@ -13,6 +13,7 @@
       "key": "G major",
       "time_signature": "4/4",
       "reference_json": "data/reference/bwv1007_prelude/prelude_monophonic_reference.json",
+      "score_json": "data/reference/bwv1007_prelude/prelude_catalog_score.json",
       "midi_path": "data/reference/bwv1007_prelude/mutopia517_prelude.mid",
       "min_confidence": 0.55,
       "match_notes": "Opening motif G2–D3–B3–A3–B3 is distinctive; real takes may insert/delete notes so confidence uses best-window + LCS blend."

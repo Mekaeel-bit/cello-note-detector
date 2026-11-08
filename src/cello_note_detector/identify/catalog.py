@@ -26,14 +26,21 @@ class CatalogEntry:
     key: str | None = None
     time_signature: str | None = None
     midi_path: Path | None = None
+    score_json: Path | None = None
     min_confidence: float = 0.55
     match_notes: str = ""
     midi_sequence: list[int] = field(default_factory=list)
     reference: dict[str, Any] = field(default_factory=dict, repr=False)
+    score: dict[str, Any] = field(default_factory=dict, repr=False)
 
     @property
     def num_notes(self) -> int:
         return len(self.midi_sequence)
+
+    @property
+    def score_data(self) -> dict[str, Any]:
+        """Playable edition used for MusicXML/MIDI attach (falls back to match ref)."""
+        return self.score or self.reference
 
 
 def _resolve_repo_path(raw: str | Path, *, repo_root: Path) -> Path:
@@ -78,6 +85,20 @@ def load_catalog(
         midi_path = (
             _resolve_repo_path(midi_raw, repo_root=root) if midi_raw else None
         )
+        score_raw = raw.get("score_json")
+        score_path = (
+            _resolve_repo_path(score_raw, repo_root=root) if score_raw else None
+        )
+        score: dict[str, Any] = {}
+        if score_path is not None:
+            if score_path.is_file():
+                score = json.loads(score_path.read_text(encoding="utf-8"))
+            else:
+                print(
+                    f"  warning: catalog entry {raw.get('id')!r} missing "
+                    f"score_json: {score_path}"
+                )
+                score_path = None
         entries.append(
             CatalogEntry(
                 id=str(raw["id"]),
@@ -94,10 +115,12 @@ def load_catalog(
                 key=raw.get("key") or ref.get("key"),
                 time_signature=raw.get("time_signature") or ref.get("time_signature"),
                 midi_path=midi_path,
+                score_json=score_path,
                 min_confidence=float(raw.get("min_confidence", default_min)),
                 match_notes=str(raw.get("match_notes") or ""),
                 midi_sequence=[int(x) for x in seq],
                 reference=ref,
+                score=score,
             )
         )
     return entries
