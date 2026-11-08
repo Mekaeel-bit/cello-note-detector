@@ -23,6 +23,7 @@ src/cello_note_detector/export/musicxml.py
 src/cello_note_detector/identify/__init__.py
 src/cello_note_detector/identify/catalog.py
 src/cello_note_detector/identify/match.py
+src/cello_note_detector/identify/musicxml_edition.py
 src/cello_note_detector/identify/score.py
 tests/test_export.py
 tests/test_identify.py

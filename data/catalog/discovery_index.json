@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "description": "Remote PD discovery seeds for Shazam-like identify. Local catalog is always tried first. These entries are NOT pre-attached scores — a live fetch only happens on local miss when --discover is on. PDF-only IMSLP works remain discoverable for provenance but cannot attach MusicXML until a PD/CC MusicXML URL is added.",
+  "candidates": [
+    {
+      "id": "bwv1007_prelude_remote",
+      "title": "Bach Cello Suite No. 1, BWV 1007 — Prélude",
+      "composer": "Johann Sebastian Bach",
+      "license": "Public Domain",
+      "imslp_work": "https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)",
+      "key": "G major",
+      "typical_duration_sec": 160.0,
+      "notes": "Prefer local catalog entry bwv1007_prelude (Mutopia MusicXML already bundled)."
+    },
+    {
+      "id": "gabrielli_ricercari_remote",
+      "title": "Gabrielli 7 Ricercari — 1st Ricercar",
+      "composer": "Domenico Gabrielli",
+      "license": "CC0 1.0",
+      "imslp_work": "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)",
+      "imslp_mxl_id": "923358",
+      "imslp_prefer": "mxl",
+      "key": "G minor",
+      "typical_duration_sec": 105.0,
+      "midi_urls": [
+        "https://ks15.imslp.org/files/imglnks/usimg/b/bd/IMSLP187416-WIMA.e164-GabrielliRicercar1.mid"
+      ],
+      "notes": "Amaracle CC0 MXL #923358; prefer local gabrielli_ricercari when bundled."
+    },
+    {
+      "id": "dallabaco_capriccio1_remote",
+      "title": "Dall'Abaco Capriccio No.1 in C minor",
+      "composer": "Joseph Marie Clément Dall'Abaco",
+      "license": "CC BY-SA 4.0",
+      "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "key": "C minor",
+      "typical_duration_sec": 190.0,
+      "musicxml_urls": [],
+      "notes": "IMSLP is PDF-only for Caprices. Local catalog ships bachwrotewhat CC BY-SA MusicXML as dallabaco_capriccio1. Not Clementi."
+    },
+    {
+      "id": "dallabaco_capriccio2_remote",
+      "title": "Dall'Abaco Capriccio No.2 in G minor",
+      "composer": "Joseph Marie Clément Dall'Abaco",
+      "license": "Public Domain",
+      "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "key": "G minor",
+      "typical_duration_sec": 176.0,
+      "notes": "Duration ~2:50–3:00. Local dallabaco_capriccio2 from LilyPond. IMSLP PDF-only (#618567)."
+    }
+  ]
+}

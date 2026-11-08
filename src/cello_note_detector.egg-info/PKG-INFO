@@ -20,7 +20,7 @@ Hackathon app for identifying cello notes from **monophonic audio** (video / fin
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
-**Song ID policy:** only public-domain editions (Mutopia / IMSLP-aligned sources already under `data/reference/`). On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run.
+**Song ID policy:** extensible local PD MusicXML catalog (`data/catalog/` — IMSLP / Mutopia / CC0). Bach + Gabrielli are first **test** entries only, not a closed list — add any PD score with `scripts/add_catalog_piece.py`. Browse with `--list-catalog` / `--search-catalog`. On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run. **Sandbox / not merge-ready** until MuseScore output matches the PD editions (see `data/catalog/pieces/*/SOURCE.txt`).
 
 ## Setup
 
@@ -155,30 +155,51 @@ MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity chec
 
 ## Song identification + published score
 
-The local catalog (`data/catalog/catalog.json`) currently includes **Bach Suite 1 Prélude** (Mutopia/Schirmer 1916 PD). On a confident match with `--identify` / `--score-source auto`, MusicXML/MIDI are generated from the **written reference** (not the rubato performance), and match metadata (`title`, `edition`, `confidence`) is written into the notes JSON plus `<stem>_identification.json`.
+The local catalog (`data/catalog/`) is **extensible for any PD MusicXML** (IMSLP / Mutopia / CC0). First test entries: **Bach Suite 1 Prélude** + **Gabrielli Ricercari**. On MATCH with `--identify` / `--score-source auto`, the **primary** `<stem>.musicxml` is a **verbatim copy of the edition MusicXML** (slurs/trills preserved — not rebuilt from JSON/MIDI). Performance dump: `<stem>_transcribed.musicxml`.
+
+**Open in MuseScore after identify:**
+
+| Clip | Open this file |
+|------|----------------|
+| Bach long take | `outputs/bach_id/Bach-cello-suite-1.musicxml` |
+| Gabrielli | `outputs/gabrielli_id/gabrielli.musicxml` |
+
+(Do **not** open `*_transcribed.musicxml` for the PD edition.)
 
 ```bash
-# Demo: identify long Prelude take → attach Mutopia/Schirmer score
+# Bach → verbatim Mutopia/Schirmer MusicXML
 python -m cello_note_detector data/multi_note_phrases/Bach-cello-suite-1.wav \
   -o outputs/bach_id --skip-mert --quantize score --identify --musicxml --midi
 
-# Force transcription sheet even if identified (metadata still recorded)
-python -m cello_note_detector data/multi_note_phrases/Bach-cello-suite-1.wav \
-  -o outputs/bach_id_meta --skip-mert --quantize score --identify \
-  --score-source transcribe --musicxml
+# Gabrielli → catalog PD MusicXML
+python -m cello_note_detector data/multi_note_phrases/gabrielli.wav \
+  -o outputs/gabrielli_id --skip-mert --quantize score --identify --musicxml
 
-# Fallback demo: unknown / non-catalog solo → transcription export (no failure)
+# Fallback: unknown solo → transcription (no failure)
 python -m cello_note_detector data/multi_note_phrases/scale_c_major_cello.wav \
   -o outputs/fallback --skip-mert --identify --musicxml --midi
 ```
 
-| Outcome | Sheet MusicXML/MIDI | JSON |
-|---------|---------------------|------|
-| Confident catalog match (`auto` / `catalog`) | From PD reference | `identification.matched=true`, `score_source=catalog`, plus `catalog_score` |
-| No match / low confidence | From audio transcription | `identification.matched=false`, `fallback=audio_transcription` |
-| Default (no `--identify`) | Transcription (unchanged) | no `identification` block |
+Browse / look up the local PD index:
 
-Add more PD solos by dropping a monophonic reference under `data/reference/<id>/` and appending an entry to `data/catalog/catalog.json` (see that folder’s README). **Do not** scrape commercial editions.
+```bash
+python -m cello_note_detector --list-catalog
+python -m cello_note_detector --search-catalog gabrielli
+```
+
+Add any PD edition:
+
+```bash
+python scripts/add_catalog_piece.py \
+  --id my_solo --musicxml /path/to/imslp.musicxml \
+  --title "…" --composer "…" --license "Public Domain"
+```
+
+| Outcome | Primary `<stem>.musicxml` | Also written | JSON |
+|---------|---------------------------|--------------|------|
+| Confident catalog match | **Verbatim PD edition MusicXML** | `*_transcribed.musicxml` | `score_kind=verbatim_pd_edition` |
+| No match / low confidence | Audio transcription | — | `fallback=audio_transcription` |
+| Default (no `--identify`) | Transcription | — | no `identification` block |
 
 ## Bach Prelude accuracy sandbox
 

@@ -1,0 +1,22 @@
+{
+  "id": "dallabaco_capriccio2",
+  "title": "Dall'Abaco Capriccio No.2 in G minor",
+  "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
+  "edition": "LilyPond capriccio_secondo.ly (babysnakes) \u2192 MusicXML",
+  "license": "Public Domain (composition); engraving as published in source repo",
+  "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+  "key": "G minor",
+  "min_confidence": 0.35,
+  "edition_musicxml": "data/catalog/pieces/dallabaco_capriccio2/edition.musicxml",
+  "fingerprint_json": "data/catalog/pieces/dallabaco_capriccio2/fingerprint.json",
+  "typical_duration_sec": 176.0,
+  "ornaments": {
+    "slurs": 0,
+    "trills_or_waves": 0,
+    "ties": 0,
+    "has_slurs": false,
+    "has_trills": false
+  },
+  "num_notes": 466,
+  "num_measures": 32
+}

@@ -12,6 +12,63 @@ from .match import IdentificationResult
 from .musicxml_edition import copy_edition_musicxml, estimate_movements_by_duration
 
 
+def _likely_from_duration_key(
+    candidates: list,
+    catalog_entries: list[CatalogEntry],
+    *,
+    duration_sec: float,
+    key_name: str,
+) -> dict[str, Any] | None:
+    """Soft hint when pitch MATCH fails but duration/key align.
+
+    Never sets matched=true — UX / debugging only.
+    """
+    if not candidates or not catalog_entries:
+        return None
+    entry_map = {e.id: e for e in catalog_entries}
+    key_l = key_name.lower().replace(" ", "")
+    scored: list[tuple[float, Any, CatalogEntry]] = []
+    for c in candidates:
+        entry = entry_map.get(c.entry_id)
+        if entry is None:
+            continue
+        score = float(c.confidence)
+        if (
+            duration_sec > 0
+            and entry.typical_duration_sec is not None
+            and entry.typical_duration_sec > 0
+        ):
+            rel = abs(duration_sec - entry.typical_duration_sec) / entry.typical_duration_sec
+            if rel <= 0.12:
+                score += 0.25
+            elif rel <= 0.25:
+                score += 0.1
+        if key_l and entry.key:
+            ek = entry.key.lower().replace(" ", "")
+            if ek in key_l or key_l in ek:
+                score += 0.2
+        scored.append((score, c, entry))
+    if not scored:
+        return None
+    scored.sort(key=lambda x: x[0], reverse=True)
+    best_score, best_c, best_e = scored[0]
+    second = scored[1][0] if len(scored) > 1 else 0.0
+    if best_score < 0.4 or (best_score - second) < 0.08:
+        return None
+    return {
+        "piece_id": best_e.id,
+        "title": best_e.title,
+        "composer": best_e.composer,
+        "pitch_confidence": round(float(best_c.confidence), 4),
+        "soft_score": round(best_score, 4),
+        "reason": "duration_key_align_not_pitch_match",
+        "note": (
+            "Soft hint only — not a MATCH. Pitch gates failed; open "
+            "transcription MusicXML, or re-record / confirm Caprice number."
+        ),
+    }
+
+
 def attach_catalog_score(
     result: dict[str, Any],
     identification: IdentificationResult,
@@ -33,6 +90,19 @@ def attach_catalog_score(
 
     if not identification.matched or identification.entry is None:
         result["identification"]["fallback"] = "audio_transcription"
+        duration = float(result.get("duration_sec") or 0.0)
+        key_name = ""
+        key_info = result.get("key")
+        if isinstance(key_info, dict):
+            key_name = str(key_info.get("name") or "")
+        likely = _likely_from_duration_key(
+            identification.candidates,
+            catalog_entries or [],
+            duration_sec=duration,
+            key_name=key_name,
+        )
+        if likely:
+            result["identification"]["likely"] = likely
         return result
 
     entry = identification.entry

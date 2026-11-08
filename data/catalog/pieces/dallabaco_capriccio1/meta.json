@@ -1,0 +1,22 @@
+{
+  "id": "dallabaco_capriccio1",
+  "title": "Dall'Abaco Capriccio No.1 in C minor",
+  "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
+  "edition": "bachwrotewhat.com Notes Only v1.0 (CC BY-SA 4.0) via MuseScore",
+  "license": "CC BY-SA 4.0",
+  "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+  "key": "C minor",
+  "min_confidence": 0.4,
+  "edition_musicxml": "data/catalog/pieces/dallabaco_capriccio1/edition.musicxml",
+  "fingerprint_json": "data/catalog/pieces/dallabaco_capriccio1/fingerprint.json",
+  "typical_duration_sec": 190.0,
+  "ornaments": {
+    "slurs": 44,
+    "trills_or_waves": 22,
+    "ties": 12,
+    "has_slurs": true,
+    "has_trills": true
+  },
+  "num_notes": 425,
+  "num_measures": 50
+}

@@ -1,0 +1,15 @@
+Joseph Marie Clément Dall'Abaco — Capriccio No.1 in C minor
+
+Correct title (not Clementi): Dall'Abaco / Clément Caprices for solo cello.
+
+Edition MusicXML:
+  data/catalog/pieces/dallabaco_capriccio1/edition.musicxml
+  = MuseScore export of bachwrotewhat.com "Notes Only" v1.0 (CC BY-SA 4.0)
+  Source zip: source/bachwrotewhat-notes-only.mscz.zip
+  https://bachwrotewhat.com/11-capricci-by-joseph-dallabaco/
+
+IMSLP work (PDF editions; MusicXML not on IMSLP):
+  https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)
+  Hamrefors Caprice No.1 PDF #618566
+
+Fingerprint: monophonic pitch sequence from the edition MusicXML.

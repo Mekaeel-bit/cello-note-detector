@@ -36,11 +36,14 @@ from cello_note_detector.export import write_midi, write_musicxml
 from cello_note_detector.identify import (
     attach_catalog_score,
     format_catalog_listing,
-    identify_sequence,
+    format_discovery_attempts,
+    identify_with_discovery,
     load_catalog,
+    load_discovery_index,
     search_catalog,
 )
 from cello_note_detector.identify.catalog import DEFAULT_CATALOG_PATH
+from cello_note_detector.identify.discover import DEFAULT_DISCOVERY_PATH
 
 # Repo root: .../src/cello_note_detector/cli.py → parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -112,6 +115,8 @@ def _process_one(
     identify: bool = False,
     score_source: str = "transcribe",
     catalog_entries: list | None = None,
+    discover: bool = True,
+    discovery_path: str | None = None,
 ) -> dict:
     audio, sr = load_mono(wav_path, sr=TARGET_SR)
     duration_s = float(len(audio) / sr)
@@ -209,15 +214,25 @@ def _process_one(
         result["rests"] = rests
         result["events"] = timeline
 
-    # Song ID + published score attach (local PD catalog). Never fails the run
-    # when a public score is missing — fall back to audio transcription.
+    # Song ID: local bundled catalog first, then optional remote PD discovery.
+    # Bundled files under data/catalog/pieces/ are NOT a live ID by themselves —
+    # MATCH only when identify copies an edition into output_dir.
+    # Unknown / low confidence → audio transcription (never fails the run).
     want_identify = identify or score_source in ("auto", "catalog")
     use_catalog_score = False
     if want_identify:
         hyp_midi = [int(n["midi"]) for n in note_dicts]
-        identification = identify_sequence(
+        key_name = None
+        if isinstance(key_info, dict):
+            key_name = key_info.get("name")
+        identification, discovery_attempts = identify_with_discovery(
             hyp_midi,
             catalog=catalog_entries if catalog_entries is not None else [],
+            discover=discover and score_source != "transcribe",
+            duration_sec=duration_s,
+            inferred_key=key_name,
+            discovery_path=discovery_path,
+            cache_dir=output_dir / "_discovery_cache",
         )
         if score_source == "transcribe":
             # Still record match metadata, but keep transcription sheet output.
@@ -251,6 +266,11 @@ def _process_one(
             bpm=bpm_override,
             catalog_entries=catalog_entries,
         )
+        if discovery_attempts:
+            result["identification"]["discovery"] = [
+                a.to_dict() for a in discovery_attempts
+            ]
+            result["_discovery_log"] = format_discovery_attempts(discovery_attempts)
         result["score_source"] = (
             "catalog" if use_catalog_score else "transcribe"
         )
@@ -361,6 +381,20 @@ def _print_summary(result: dict) -> None:
                 f"fallback={ident.get('fallback', 'audio_transcription')}  "
                 f"score_source={result.get('score_source')}"
             )
+            print(
+                "  note: data/catalog/pieces/* are bundled PD editions "
+                "(ship with the repo). They are NOT a live ID until MATCH "
+                "copies one into this output dir."
+            )
+            likely = ident.get("likely")
+            if isinstance(likely, dict) and likely.get("piece_id"):
+                print(
+                    f"  likely (soft, not MATCH): {likely.get('title')} "
+                    f"[{likely.get('piece_id')}] soft={likely.get('soft_score')} "
+                    f"— {likely.get('reason')}"
+                )
+        if result.get("_discovery_log"):
+            print(result["_discovery_log"])
 
     rests = result.get("rests") or []
     for r in rests[:8]:
@@ -391,12 +425,13 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Monophonic cello WAV → multi-note pyin transcription, "
             "tempo/key/rhythm quantization (notes + rests), optional "
-            "song ID against a local public-domain catalog (attach "
-            "published score on confident match; otherwise keep the "
-            "audio transcription), optional MusicXML/MIDI sheet export, "
-            "and optional MERT-v1-95M frame embeddings. Tempo/key are "
-            "inferred from audio (never from filenames); use --bpm / "
-            "--key to override."
+            "Shazam-like song ID (local PD catalog first, then optional "
+            "remote IMSLP/Mutopia discovery; attach published MusicXML on "
+            "confident MATCH; otherwise keep the audio transcription), "
+            "optional MusicXML/MIDI sheet export, and optional "
+            "MERT-v1-95M frame embeddings. Tempo/key are inferred from "
+            "audio (never from filenames); use --bpm / --key to override. "
+            "Bundled catalog files are not a live ID until MATCH."
         ),
     )
     p.add_argument(
@@ -536,9 +571,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--identify",
         action="store_true",
         help=(
-            "Match the transcribed pitch sequence against the local "
-            "public-domain cello catalog and record match metadata. "
-            "Implies --score-source auto unless --score-source is set."
+            "Shazam-like song ID: fingerprint audio → search the local "
+            "bundled PD catalog → on miss, optionally discover remote PD "
+            "MusicXML (see --discover). Implies --score-source auto "
+            "unless --score-source is set. Bundled data/catalog/pieces/* "
+            "are fixtures until a MATCH copies them into outputs/."
+        ),
+    )
+    p.add_argument(
+        "--discover",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "With --identify: after a local catalog miss, try remote PD "
+            "seeds in data/catalog/discovery_index.json (IMSLP/Mutopia/"
+            "direct MusicXML URLs). Default: on. Use --no-discover for "
+            "local-only."
+        ),
+    )
+    p.add_argument(
+        "--discovery-index",
+        default=str(DEFAULT_DISCOVERY_PATH),
+        help=(
+            "Remote PD discovery seed JSON "
+            f"(default: {DEFAULT_DISCOVERY_PATH})"
         ),
     )
     p.add_argument(
@@ -615,14 +671,21 @@ def main(argv: list[str] | None = None) -> int:
     catalog_entries = None
     if want_identify:
         catalog_entries = load_catalog(args.catalog)
+        seeds = load_discovery_index(args.discovery_index) if args.discover else []
         print(
-            f"Catalog: {len(catalog_entries)} piece(s) from {args.catalog} "
-            f"(score-source={score_source})"
+            f"Catalog: {len(catalog_entries)} bundled piece(s) from {args.catalog} "
+            f"(score-source={score_source}; "
+            f"discover={'on' if args.discover else 'off'}, "
+            f"{len(seeds)} remote seed(s))"
+        )
+        print(
+            "  UX: bundled data/catalog/pieces/* ship with the repo; "
+            "MATCH only after identify copies an edition into -o."
         )
         if not catalog_entries:
             print(
-                "  warning: empty catalog — will fall back to audio "
-                "transcription for every file"
+                "  warning: empty catalog — will try discovery (if on) then "
+                "fall back to audio transcription"
             )
 
     mert_bundle = None
@@ -653,6 +716,8 @@ def main(argv: list[str] | None = None) -> int:
             identify=args.identify,
             score_source=score_source,
             catalog_entries=catalog_entries,
+            discover=bool(args.discover),
+            discovery_path=args.discovery_index,
         )
         _print_summary(result)
 

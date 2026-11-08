@@ -1,33 +1,57 @@
-# Extensible PD score catalog
+# Extensible PD score catalog (bundled + discoverable)
 
 Local catalog for **song ID + verbatim published MusicXML attach**.
 
-Bach Suite 1 Prélude and Gabrielli Ricercari are the first test entries — the
-catalog is **not** limited to them. Add any public-domain / CC0 cello MusicXML
-(IMSLP, Mutopia, etc.).
+## Important UX (please read)
+
+Files under `data/catalog/pieces/` are **bundled PD/CC editions that ship with
+the repo**. Seeing Bach / Gabrielli / Dall'Abaco MusicXML on disk **before** you
+run the CLI does **not** mean the audio was identified. A live ID looks like:
+
+- Console: `identify: MATCH … score_kind=verbatim_pd_edition`
+- Output: `outputs/<stem>.musicxml` is a **copy made during this run**
+- JSON: `identification.matched=true`
+
+On miss: transcription fallback (`*_notes.json` / transcribed MusicXML) — never
+pretend a pre-existing catalog file is a Shazam hit.
+
+## Shazam-like flow
+
+1. Fingerprint audio (pitch sequence).
+2. Search **local** `catalog.json` (extensible; not limited to 2 pieces).
+3. On miss, `--discover` (default with `--identify`) consults
+   `discovery_index.json` and tries live IMSLP/Mutopia/direct MusicXML URLs.
+4. Still miss → audio transcription.
+
+```bash
+python -m cello_note_detector data/multi_note_phrases/clement-caprices.wav \
+  -o outputs/clement_id --skip-mert --quantize score --identify --musicxml
+
+# Local-only (no remote fetch attempts)
+python -m cello_note_detector … --identify --no-discover
+```
 
 ## Layout
 
 ```text
 data/catalog/
-  catalog.json                 # index of pieces
+  catalog.json                 # bundled index
+  discovery_index.json         # remote PD seeds (live fetch on miss)
   pieces/<id>/
     edition.musicxml|.mxl      # VERBATIM PD edition (what MuseScore opens)
-    fingerprint.json           # pitch sequence + ornament stats for matching
-    meta.json                  # title / license / IMSLP link
-    source/                    # optional LilyPond / provenance sidecars
+    fingerprint.json           # pitch sequence for matching
+    meta.json
+    SOURCE.txt                 # provenance
+    source/                    # LilyPond / IMSLP sidecars
 ```
 
 ## Browse / look up
 
 ```bash
 python -m cello_note_detector --list-catalog
-python -m cello_note_detector --search-catalog bach
-python -m cello_note_detector --search-catalog IMSLP
+python -m cello_note_detector --search-catalog dallabaco
+python -m cello_note_detector --search-catalog Capriccio
 ```
-
-Audio identify searches the same index by pitch fingerprint; unknown audio
-falls back to transcription.
 
 ## Add a piece
 
@@ -44,26 +68,5 @@ python scripts/add_catalog_piece.py \
 
 Prefer **MusicXML/MXL edition files**. Do not scrape commercial editions.
 
-## MATCH behavior
-
-On confident identify:
-
-- Primary `<stem>.musicxml` = **byte-for-byte copy** of `edition.musicxml`
-  (slurs, trills, ties kept).
-- `<stem>_transcribed.musicxml` = audio transcription (comparison only).
-
-On miss / low confidence: transcription export only (never fails).
-
-## Gabrielli CC0 MXL
-
-When you can download IMSLP #923358 (Amaracle CC0), replace the placeholder:
-
-```bash
-python scripts/add_catalog_piece.py \
-  --id gabrielli_ricercari \
-  --musicxml ~/Downloads/IMSLP923358.mxl \
-  --title "Gabrielli 7 Ricercari" \
-  --composer "Domenico Gabrielli" \
-  --license "CC0 1.0" \
-  --imslp "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)"
-```
+Current test entries: Bach BWV 1007 Prélude, Gabrielli 1st Ricercar,
+Dall'Abaco Capricci Nos. 1–2 (Clément — **not** Clementi).

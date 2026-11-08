@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli 1st Ricercar are first TEST entries \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. Prefer scripts/fetch_imslp_score.py for IMSLP CDN discovery.",
+  "description": "Extensible LOCAL (bundled) PD/CC cello MusicXML catalog. Bach, Gabrielli, and Dall'Abaco Caprices 1\u20132 are TEST entries only \u2014 not a closed list. These files ship in-repo; seeing them before --identify does NOT mean a live song ID already ran. MATCH copies the edition into outputs/. On miss, --discover can fetch remote PD seeds (discovery_index.json). Add pieces with scripts/add_catalog_piece.py.",
   "default_min_confidence": 0.55,
   "entries": [
     {
@@ -30,6 +30,35 @@
       "fingerprint_json": "data/catalog/pieces/gabrielli_ricercari/fingerprint.json",
       "typical_duration_sec": 105.0,
       "match_notes": "Edition MusicXML = Amaracle #923358 1st Ricercar. Fingerprint = WIMA/Gomez #187416 sounding MIDI for audio match."
+    },
+    {
+      "id": "dallabaco_capriccio1",
+      "title": "Dall'Abaco Capriccio No.1 in C minor",
+      "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
+      "edition": "bachwrotewhat.com Notes Only v1.0 (CC BY-SA 4.0) via MuseScore",
+      "license": "CC BY-SA 4.0",
+      "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "key": "C minor",
+      "min_confidence": 0.4,
+      "edition_musicxml": "data/catalog/pieces/dallabaco_capriccio1/edition.musicxml",
+      "fingerprint_json": "data/catalog/pieces/dallabaco_capriccio1/fingerprint.json",
+      "typical_duration_sec": 190.0,
+      "match_notes": "Fingerprint extracted from the edition MusicXML (monophonic pitch sequence). Slurs/trills preserved in the verbatim edition file."
+    },
+    {
+      "id": "dallabaco_capriccio2",
+      "title": "Dall'Abaco Capriccio No.2 in G minor",
+      "composer": "Joseph Marie Cl\u00e9ment Dall'Abaco",
+      "edition": "LilyPond capriccio_secondo.ly (babysnakes) \u2192 MusicXML",
+      "license": "Public Domain (composition); engraving as published in source repo",
+      "imslp_work": "https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)",
+      "key": "G minor",
+      "min_confidence": 0.35,
+      "edition_musicxml": "data/catalog/pieces/dallabaco_capriccio2/edition.musicxml",
+      "fingerprint_json": "data/catalog/pieces/dallabaco_capriccio2/fingerprint.json",
+      "typical_duration_sec": 176.0,
+      "match_notes": "Edition MusicXML from LilyPond\u2192MusicXML; fingerprint from LilyPond MIDI.",
+      "midi_path": "data/catalog/pieces/dallabaco_capriccio2/source/capriccio_secondo.mid"
     }
   ]
 }

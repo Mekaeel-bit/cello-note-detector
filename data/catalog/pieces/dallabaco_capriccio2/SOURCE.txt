@@ -1,0 +1,12 @@
+Joseph Marie Clément Dall'Abaco — Capriccio No.2 in G minor
+
+Edition MusicXML:
+  LilyPond transcription → MIDI → MusicXML
+  LilyPond source: https://github.com/babysnakes/Guiseppe-Maria-Dall-Abaco---11-Capricci
+  (capriccio_secondo.ly; based on a bought copy — machine-readable PD-style engraving)
+
+IMSLP work:
+  https://imslp.org/wiki/11_Capricci_for_Cello_(Dall'Abaco,_Joseph)
+  Hamrefors Caprice No.2 PDF #618567
+
+Typical duration ~2:50–3:00 (matches Teddy's clement-caprices.wav length).

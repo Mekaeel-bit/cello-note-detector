@@ -6,7 +6,7 @@ Hackathon app for identifying cello notes from **monophonic audio** (video / fin
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
-**Song ID policy:** extensible local PD MusicXML catalog (`data/catalog/` — IMSLP / Mutopia / CC0). Bach + Gabrielli are first **test** entries only, not a closed list — add any PD score with `scripts/add_catalog_piece.py`. Browse with `--list-catalog` / `--search-catalog`. On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run. **Sandbox / not merge-ready** until MuseScore output matches the PD editions (see `data/catalog/pieces/*/SOURCE.txt`).
+**Song ID policy (Shazam-like):** fingerprint audio → search the **local bundled** PD/CC MusicXML catalog → on miss, optionally **discover** remote PD seeds (`discovery_index.json`, IMSLP/Mutopia). Bach / Gabrielli / Dall'Abaco Caprices are **test** entries only — not a closed list (`scripts/add_catalog_piece.py`). Browse with `--list-catalog` / `--search-catalog`. **UX:** files under `data/catalog/pieces/` ship with the repo; they are **not** a live ID until `--identify` prints `MATCH` and copies an edition into `-o`. On miss / low confidence → **audio transcription** (never fails).
 
 ## Setup
 
@@ -80,9 +80,11 @@ Useful flags:
 | `--gap-tolerance 0.10` | bridge short unvoiced gaps inside one note |
 | `--min-duration 0.08` | drop flicker shorter than this |
 | `--median-filter-size 11` | MIDI median window to reduce vibrato flicker |
-| `--identify` | match pitch sequence to the local PD catalog; implies `--score-source auto` |
+| `--identify` | Shazam-like ID (local catalog, then optional discover); implies `--score-source auto` |
+| `--discover` / `--no-discover` | after local miss, try remote PD seeds (default on with identify) |
+| `--discovery-index PATH` | remote seed JSON (default: `data/catalog/discovery_index.json`) |
 | `--score-source auto\|transcribe\|catalog` | sheet source: catalog on confident match (`auto`), always transcription, or prefer catalog (still falls back) |
-| `--catalog PATH` | catalog JSON (default: `data/catalog/catalog.json`) |
+| `--catalog PATH` | bundled catalog JSON (default: `data/catalog/catalog.json`) |
 
 ### Quantize presets
 
@@ -139,9 +141,13 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
-## Song identification + published score
+## Song identification + published score (Shazam-like)
 
-The local catalog (`data/catalog/`) is **extensible for any PD MusicXML** (IMSLP / Mutopia / CC0). First test entries: **Bach Suite 1 Prélude** + **Gabrielli Ricercari**. On MATCH with `--identify` / `--score-source auto`, the **primary** `<stem>.musicxml` is a **verbatim copy of the edition MusicXML** (slurs/trills preserved — not rebuilt from JSON/MIDI). Performance dump: `<stem>_transcribed.musicxml`.
+**Bundled ≠ identified.** `data/catalog/pieces/*` are PD/CC editions that **ship in the repo**. Opening those files (or seeing them in git) is not a live song ID. A real MATCH only happens when you run `--identify` and the CLI copies an edition into your `-o` folder.
+
+Flow: audio fingerprint → **local catalog** → on miss, **`--discover`** (default) tries remote PD seeds in `data/catalog/discovery_index.json` → still miss → **transcription**.
+
+Test entries (extensible — not a closed list): Bach Suite 1 Prélude, Gabrielli 1st Ricercar, **Dall'Abaco Capricci 1–2** (Joseph Marie **Clément** Dall'Abaco — not Clementi). On MATCH, primary `<stem>.musicxml` is a **verbatim** edition copy; performance dump: `<stem>_transcribed.musicxml`.
 
 **Open in MuseScore after identify:**
 
@@ -149,6 +155,7 @@ The local catalog (`data/catalog/`) is **extensible for any PD MusicXML** (IMSLP
 |------|----------------|
 | Bach long take | `outputs/bach_id/Bach-cello-suite-1.musicxml` |
 | Gabrielli | `outputs/gabrielli_id/gabrielli.musicxml` |
+| Dall'Abaco Caprices | `outputs/clement_id/clement-caprices.musicxml` **only if MATCH** |
 
 (Do **not** open `*_transcribed.musicxml` for the PD edition.)
 
@@ -161,6 +168,14 @@ python -m cello_note_detector data/multi_note_phrases/Bach-cello-suite-1.wav \
 python -m cello_note_detector data/multi_note_phrases/gabrielli.wav \
   -o outputs/gabrielli_id --skip-mert --quantize score --identify --musicxml
 
+# Clément Dall'Abaco Caprices test clip (local catalog + discover)
+python -m cello_note_detector data/multi_note_phrases/clement-caprices.wav \
+  -o outputs/clement_id --skip-mert --quantize score --identify --musicxml
+
+# Local-only identify (no remote fetch attempts)
+python -m cello_note_detector data/multi_note_phrases/clement-caprices.wav \
+  -o outputs/clement_id --skip-mert --identify --no-discover --musicxml
+
 # Fallback: unknown solo → transcription (no failure)
 python -m cello_note_detector data/multi_note_phrases/scale_c_major_cello.wav \
   -o outputs/fallback --skip-mert --identify --musicxml --midi
@@ -170,7 +185,7 @@ Browse / look up the local PD index:
 
 ```bash
 python -m cello_note_detector --list-catalog
-python -m cello_note_detector --search-catalog gabrielli
+python -m cello_note_detector --search-catalog dallabaco
 ```
 
 Add any PD edition:
@@ -183,7 +198,7 @@ python scripts/add_catalog_piece.py \
 
 | Outcome | Primary `<stem>.musicxml` | Also written | JSON |
 |---------|---------------------------|--------------|------|
-| Confident catalog match | **Verbatim PD edition MusicXML** | `*_transcribed.musicxml` | `score_kind=verbatim_pd_edition` |
+| Confident catalog/discovery MATCH | **Verbatim PD edition MusicXML** | `*_transcribed.musicxml` | `score_kind=verbatim_pd_edition` |
 | No match / low confidence | Audio transcription | — | `fallback=audio_transcription` |
 | Default (no `--identify`) | Transcription | — | no `identification` block |
 
