@@ -25,6 +25,13 @@ python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp
 #   <stem>_fused_timeline.json  (includes audio_path / video_path / video_only_path)
 # Fails loudly if extracted WAV RMS is near silence.
 
+# Sheet music from fusion (fingerings + left-hand position) — FULL CLIP (no --max-frames):
+python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
+  -o outputs/video --fuse --musicxml --overlay
+# → outputs/video/mspho_a_major_3oct_front_fused.musicxml
+# Open in MuseScore: File → Open → that .musicxml file (bass clef, fingerings above notes).
+# Note: --max-frames 180 is demo/debug only; omit it for whole-song tracking.
+
 # align roughly to audio only (extracts WAV via ffmpeg, runs pyin; no string fusion)
 python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \
   -o outputs/video --overlay --align-audio
