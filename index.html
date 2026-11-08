@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cello Note Detector</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Cello Note Detector</h1>
+    <h2>Live Microphone</h2>
+    <div id = "liveNote">-</div>
+    <div id = "liveInfo"></div>
+    <canvas id = "liveRoll" width = "900" height="260"></canvas>
+
+    <h2>Upload a recording</h2>
+    <input type="file" id="file" accept="audio/*">
+    <button id="go">Detect notes</button>
+    <div id="status">Choose a cello clip</div>
+
+    <audio id="player" controls></audio>
+    <canvas id="roll" width="900" height="320"></canvas>
+    <div id="list"></div>
+    
+  <script src="script.js"></script>
+  <script src="live.js"></script>   
+</body>
+</html>
