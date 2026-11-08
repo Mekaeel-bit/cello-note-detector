@@ -87,3 +87,32 @@ def test_near_dup_keeps_sixteenth_neighbor_tones():
     ]
     kept = merge_adjacent_near_duplicates(c_b_c, max_guest_sec=0.08)
     assert [e.midi for e in kept] == [60, 59, 60]
+
+
+def test_octave_correct_snaps_open_g_harmonic():
+    """Synthetic open-G with strong 2nd harmonic should snap G3 → G2."""
+    import numpy as np
+
+    from cello_note_detector.audio.pitch_baseline import correct_cello_octave_errors
+
+    sr = 16_000
+    t = np.arange(int(0.25 * sr), dtype=np.float64) / sr
+    # Fundamental G2 (~98 Hz) + stronger 2nd harmonic G3 (~196 Hz).
+    seg = 0.3 * np.sin(2 * np.pi * 98.0 * t) + 0.9 * np.sin(2 * np.pi * 196.0 * t)
+    audio = seg.astype(np.float32)
+    events = [_ev(55, 0.0, 0.25)]  # mislabeled G3
+    fixed = correct_cello_octave_errors(events, audio, sr=sr, half_ratio=0.15)
+    assert len(fixed) == 1 and fixed[0].midi == 43
+
+
+def test_trim_trailing_low_confidence():
+    from cello_note_detector.audio.pitch_baseline import trim_trailing_low_confidence
+
+    notes = [
+        _ev(60, 0.0, 0.2, conf=0.8),
+        _ev(62, 0.25, 0.2, conf=0.8),
+        _ev(50, 2.0, 1.0, conf=0.10),  # after long gap, weak
+    ]
+    trimmed = trim_trailing_low_confidence(notes, gap_sec=0.8, max_confidence=0.18)
+    assert len(trimmed) == 2
+    assert trimmed[-1].midi == 62

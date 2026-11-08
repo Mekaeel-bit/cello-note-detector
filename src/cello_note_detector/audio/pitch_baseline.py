@@ -46,6 +46,11 @@ DEFAULT_ONSET_SPLIT_MIN_NOTE_SEC = 0.12
 # neighbor figures (e.g. C–B–C) are not folded into one pitch.
 DEFAULT_NEAR_DUP_GAP_SEC = 0.06
 DEFAULT_NEAR_DUP_GUEST_SEC = 0.08
+# Cello open strings (instrument prior, not piece-specific). pyin often locks
+# onto the strong 2nd harmonic (G3 for open G2, etc.); spectral check snaps down.
+CELLO_OPEN_STRING_MIDI = frozenset({36, 43, 50, 57})  # C2 G2 D3 A3
+DEFAULT_OCTAVE_CORR_HALF_RATIO = 0.18  # E(f0/2) / E(f0) to accept lower octave
+DEFAULT_OCTAVE_CORRECT = True
 
 
 def detect_f0(
@@ -476,6 +481,175 @@ def merge_adjacent_near_duplicates(
     return merged
 
 
+def _band_energy(mag: np.ndarray, freqs: np.ndarray, hz: float, width_hz: float) -> float:
+    if hz <= 0 or mag.size == 0:
+        return 0.0
+    mask = (freqs >= hz - width_hz) & (freqs <= hz + width_hz)
+    if not np.any(mask):
+        return 0.0
+    return float(np.mean(mag[mask]))
+
+
+def correct_cello_octave_errors(
+    events: list[NoteEvent],
+    audio: np.ndarray,
+    *,
+    sr: int = TARGET_SR,
+    open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
+    half_ratio: float = DEFAULT_OCTAVE_CORR_HALF_RATIO,
+) -> list[NoteEvent]:
+    """Snap harmonic octave errors down using spectrum (cello open-string prior).
+
+    pyin often reports G3/D4/… when the sounding fundamental is the open
+    string an octave below. If ``midi-12`` is an open string and the spectrum
+    has meaningful energy at f0/2, rewrite to the lower octave. Instrument
+    prior only — not piece-specific.
+    """
+    if not events or audio.size == 0:
+        return events
+
+    out: list[NoteEvent] = []
+    n_fft = 2048
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
+    width = max(3.0, float(sr) / n_fft)
+
+    for ev in events:
+        lower = int(ev.midi) - 12
+        if lower not in open_strings:
+            out.append(ev)
+            continue
+        a0 = max(0, int(float(ev.onset) * sr))
+        a1 = min(len(audio), int(float(ev.offset) * sr))
+        seg = audio[a0:a1]
+        if seg.size < n_fft // 4:
+            out.append(ev)
+            continue
+        # Zero-pad short segments so stft is stable.
+        if seg.size < n_fft:
+            pad = np.zeros(n_fft, dtype=np.float64)
+            pad[: seg.size] = seg
+            seg = pad
+        mag = np.abs(
+            librosa.stft(
+                seg.astype(np.float64), n_fft=n_fft, hop_length=n_fft // 4
+            )
+        )
+        mag_mean = np.mean(mag, axis=1)
+        f_hi = float(librosa.midi_to_hz(ev.midi))
+        f_lo = float(librosa.midi_to_hz(lower))
+        e_hi = _band_energy(mag_mean, freqs, f_hi, width)
+        e_lo = _band_energy(mag_mean, freqs, f_lo, width)
+        if e_hi <= 1e-12:
+            out.append(ev)
+            continue
+        if e_lo / e_hi >= half_ratio:
+            out.append(
+                NoteEvent(
+                    pitch_hz=round(f_lo, 4),
+                    midi=lower,
+                    note=librosa.midi_to_note(lower),
+                    onset=ev.onset,
+                    offset=ev.offset,
+                    duration=ev.duration,
+                    confidence=ev.confidence,
+                )
+            )
+        else:
+            out.append(ev)
+    return out
+
+
+def smooth_cello_octaves(
+    events: list[NoteEvent],
+    *,
+    midi_min: int = 36,
+    midi_max: int = 84,
+    center_midi: float = 55.0,
+    center_weight: float = 1.35,
+    open_strings: frozenset[int] = CELLO_OPEN_STRING_MIDI,
+    open_string_bonus: float = 5.0,
+    max_confidence: float = 0.18,
+    min_leap_to_fix: int = 8,
+) -> list[NoteEvent]:
+    """Rechoose ±1 octave for *low-confidence* notes to smooth cello register.
+
+    Only rewrites uncertain pyin estimates (``confidence <= max_confidence``)
+    when an alternate octave clearly reduces an awkward leap. Open-string
+    pedals keep a bonus so G2 is not lifted to G3. Piece-agnostic.
+    """
+    if len(events) < 2:
+        return events
+
+    def _rewrite(ev: NoteEvent, midi: int) -> NoteEvent:
+        if midi == ev.midi:
+            return ev
+        return NoteEvent(
+            pitch_hz=round(float(librosa.midi_to_hz(midi)), 4),
+            midi=int(midi),
+            note=librosa.midi_to_note(midi),
+            onset=ev.onset,
+            offset=ev.offset,
+            duration=ev.duration,
+            confidence=ev.confidence,
+        )
+
+    out: list[NoteEvent] = [events[0]]
+    for ev in events[1:]:
+        prev = int(out[-1].midi)
+        if float(ev.confidence) > max_confidence:
+            out.append(ev)
+            continue
+        cands = [
+            int(ev.midi) + 12 * k
+            for k in (-1, 0, 1)
+            if midi_min <= int(ev.midi) + 12 * k <= midi_max
+        ]
+        if not cands:
+            out.append(ev)
+            continue
+
+        def _score(c: int) -> tuple:
+            leap = abs(c - prev)
+            reg = abs(c - center_midi)
+            bonus = -open_string_bonus if c in open_strings else 0.0
+            return (leap + center_weight * reg + bonus, reg, -c)
+
+        best = min(cands, key=_score)
+        # Only rewrite clear octave jumps (leap ≥ octave-ish) when an
+        # alternate octave is closer to the prior note / register.
+        if (
+            best != ev.midi
+            and abs(int(ev.midi) - prev) >= min_leap_to_fix
+            and abs(best - prev) < abs(int(ev.midi) - prev) - 1
+        ):
+            out.append(_rewrite(ev, best))
+        else:
+            out.append(ev)
+    return out
+
+
+def trim_trailing_low_confidence(
+    events: list[NoteEvent],
+    *,
+    gap_sec: float = 0.80,
+    max_confidence: float = 0.18,
+) -> list[NoteEvent]:
+    """Drop trailing low-confidence notes after a long silence (performance end)."""
+    if len(events) < 2:
+        return events
+    ordered = sorted(events, key=lambda e: (e.onset, e.offset))
+    # Find last large gap; trim suffix if those notes are weak.
+    cut = len(ordered)
+    for i in range(len(ordered) - 1, 0, -1):
+        gap = float(ordered[i].onset) - float(ordered[i - 1].offset)
+        if gap >= gap_sec:
+            suffix = ordered[i:]
+            if suffix and all(e.confidence <= max_confidence for e in suffix):
+                cut = i
+            break
+    return ordered[:cut]
+
+
 def transcribe_notes(
     audio: np.ndarray,
     *,
@@ -490,6 +664,8 @@ def transcribe_notes(
     merge_same_pitch: bool = True,
     same_pitch_max_gap_sec: float = DEFAULT_SAME_PITCH_MAX_GAP_SEC,
     same_pitch_short_sec: float = DEFAULT_SAME_PITCH_SHORT_SEC,
+    octave_correct: bool = DEFAULT_OCTAVE_CORRECT,
+    trim_trailing: bool = True,
     frame_length: int = DEFAULT_FRAME_LENGTH,
     hop_length: int = DEFAULT_HOP_LENGTH,
 ) -> tuple[list[NoteEvent], dict]:
@@ -538,6 +714,15 @@ def transcribe_notes(
             short_sec=same_pitch_short_sec,
         )
         events = merge_adjacent_near_duplicates(events)
+    n_pre_octave = len(events)
+    if octave_correct:
+        # Spectral open-string harmonic snap (G3→G2 etc.). Melodic ±1
+        # octave smooth is available but opt-in — aggressive smoothing
+        # can hurt clean takes while helping noisy ones.
+        events = correct_cello_octave_errors(events, audio, sr=sr)
+    n_pre_trim = len(events)
+    if trim_trailing:
+        events = trim_trailing_low_confidence(events)
     meta = {
         "frame_length": frame_length,
         "hop_length": hop_length,
@@ -555,7 +740,11 @@ def transcribe_notes(
         "same_pitch_short_sec": (
             same_pitch_short_sec if merge_same_pitch else None
         ),
+        "octave_correct": octave_correct,
+        "trim_trailing": trim_trailing,
         "num_notes_pre_merge": raw_count,
+        "num_notes_pre_octave": n_pre_octave,
+        "num_notes_pre_trim": n_pre_trim,
         "num_onsets": int(len(onset_times)),
         "onset_times": [round(float(t), 4) for t in onset_times.tolist()],
     }

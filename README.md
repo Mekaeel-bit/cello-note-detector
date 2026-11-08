@@ -134,6 +134,16 @@ Console prints note preview, rest preview, estimated BPM, key, export paths, and
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
+## Bach Prelude accuracy sandbox
+
+Two Prelude WAVs live under `data/multi_note_phrases/` (`Bach_Prelude_from_Cello_Suite_in_G.wav`, `Bach-cello-suite-1.wav`). Compare against the Mutopia/Schirmer public-domain monophonic reference in `data/reference/bwv1007_prelude/` (IMSLP-aligned pitch/rhythm; bowings non-authoritative). Prefer `--quantize score` for written equal-sixteenth intent. Never infer tempo/key from filenames.
+
+```bash
+python -m cello_note_detector data/multi_note_phrases/Bach_Prelude_from_Cello_Suite_in_G.wav \
+  -o outputs/bach --skip-mert --quantize score --musicxml --midi
+python scripts/eval_pitch_sequence.py outputs/bach/Bach_Prelude_from_Cello_Suite_in_G_notes.json
+```
+
 ## Multi-note tests
 
 The sample-pack loops under `data/Recordings/` are mostly sustained single pitches. For **multi-note** and **rhythm/rest** checks, use the synthetic phrases in `data/multi_note_phrases/` (additive cello-range tones — license-clean; see that folder’s README). Real multi-note sample-pack clips in that folder are also good regression checks — compare by ear/structure, and do **not** trust tempo/key tokens in the filename.
