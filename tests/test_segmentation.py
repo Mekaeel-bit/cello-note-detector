@@ -68,11 +68,22 @@ def test_flicker_sandwich_merges_short_sides():
 
 
 def test_near_dup_absorbs_micro_island_not_neighbor_tone():
-    # Short F# after G folds in; Bb–A neighbor tones of similar length stay.
-    g_fs = [_ev(43, 0.0, 0.60), _ev(42, 0.62, 0.12)]
-    folded = merge_adjacent_near_duplicates(g_fs, max_guest_sec=0.20)
+    # True micro F# after long G folds in; Bb–A neighbor tones stay.
+    g_fs = [_ev(43, 0.0, 0.60), _ev(42, 0.62, 0.06)]
+    folded = merge_adjacent_near_duplicates(g_fs, max_guest_sec=0.08)
     assert len(folded) == 1 and folded[0].midi == 43
 
     bb_a = [_ev(46, 0.0, 0.40), _ev(45, 0.42, 0.40)]
-    kept = merge_adjacent_near_duplicates(bb_a, max_guest_sec=0.20)
+    kept = merge_adjacent_near_duplicates(bb_a, max_guest_sec=0.08)
     assert len(kept) == 2
+
+
+def test_near_dup_keeps_sixteenth_neighbor_tones():
+    # Continuous-stream C–B–C (~0.15–0.22 s each) must not collapse.
+    c_b_c = [
+        _ev(60, 0.0, 0.15),
+        _ev(59, 0.15, 0.20),
+        _ev(60, 0.35, 0.18),
+    ]
+    kept = merge_adjacent_near_duplicates(c_b_c, max_guest_sec=0.08)
+    assert [e.midi for e in kept] == [60, 59, 60]

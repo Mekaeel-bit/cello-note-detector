@@ -26,22 +26,26 @@ DEFAULT_ONSET_DELTA = 0.11
 # Ignore weak spectral peaks (sustained drones / vibrato). Real note
 # attacks on the synthetic phrases sit well above this; sample-pack
 # drones mostly do not.
-DEFAULT_MIN_ONSET_STRENGTH = 1.35
+DEFAULT_MIN_ONSET_STRENGTH = 1.15
 # Merge adjacent ±1-semitone flicker shorter than this into neighbours.
 # Keep this below typical rearticulation / neighbor-tone lengths so a
 # short F♯ island does not glue two articulated G's into one blob.
-DEFAULT_FLICKER_MERGE_SEC = 0.12
+# Also keep below ~sixteenth neighbor tones (C–B–C) in continuous streams.
+DEFAULT_FLICKER_MERGE_SEC = 0.10
 DEFAULT_FLICKER_SEMI_TONES = 1
 # Same-MIDI run bridging: absorb short fragments / vibrato splits while
 # keeping intentional rearticulations (e.g. Twinkle C–C) when every note
 # in the run is long and gaps are articulation-sized.
 DEFAULT_SAME_PITCH_MAX_GAP_SEC = 0.14
-DEFAULT_SAME_PITCH_SHORT_SEC = 0.30
+DEFAULT_SAME_PITCH_SHORT_SEC = 0.28
 # Minimum sounding length before an onset may re-split the same pitch.
-DEFAULT_ONSET_SPLIT_MIN_NOTE_SEC = 0.18
+# Slightly shorter so continuous sixteenth streams can rearticulate.
+DEFAULT_ONSET_SPLIT_MIN_NOTE_SEC = 0.12
 # Near-duplicate ±1 absorb: only true micro-islands (not neighbor tones).
-DEFAULT_NEAR_DUP_GAP_SEC = 0.08
-DEFAULT_NEAR_DUP_GUEST_SEC = 0.20
+# Must stay below typical sixteenth lengths (~0.15–0.25 s) so written
+# neighbor figures (e.g. C–B–C) are not folded into one pitch.
+DEFAULT_NEAR_DUP_GAP_SEC = 0.06
+DEFAULT_NEAR_DUP_GUEST_SEC = 0.08
 
 
 def detect_f0(
@@ -434,8 +438,12 @@ def merge_adjacent_near_duplicates(
                 merged.append(ev)
             continue
         # ±1: absorb only true micro-islands into the longer host.
-        if ev.duration <= max_guest_sec and prev.duration >= max(
-            ev.duration * 1.5, max_guest_sec
+        # Require the guest to be clearly fragmentary AND much shorter than
+        # the host so articulated neighbor tones in equal-note streams survive.
+        guest_ok = max_guest_sec
+        if (
+            ev.duration <= guest_ok
+            and prev.duration >= max(ev.duration * 2.0, guest_ok * 2.0)
         ):
             merged[-1] = NoteEvent(
                 pitch_hz=prev.pitch_hz,
@@ -448,8 +456,9 @@ def merge_adjacent_near_duplicates(
                 ),
                 confidence=prev.confidence,
             )
-        elif prev.duration <= max_guest_sec and ev.duration >= max(
-            prev.duration * 1.5, max_guest_sec
+        elif (
+            prev.duration <= guest_ok
+            and ev.duration >= max(prev.duration * 2.0, guest_ok * 2.0)
         ):
             merged[-1] = NoteEvent(
                 pitch_hz=ev.pitch_hz,

@@ -129,9 +129,17 @@ def pitch_class_histogram(
     *,
     min_duration: float = 0.12,
     min_confidence: float = 0.25,
+    bass_midi_cutoff: int = 48,
+    bass_weight: float = 2.0,
+    count_blend: float = 0.35,
 ) -> np.ndarray:
-    """Duration-weighted pitch-class histogram (ignores short flicker)."""
+    """Duration-weighted pitch-class histogram (ignores short flicker).
+
+    Cello-oriented: low notes (open strings / pedals) get ``bass_weight``,
+    and a light note-count blend reduces bias from a few over-long sustains.
+    """
     hist = np.zeros(12, dtype=np.float64)
+    counts = np.zeros(12, dtype=np.float64)
     for n in notes:
         if isinstance(n, dict):
             midi = int(n["midi"])
@@ -143,7 +151,14 @@ def pitch_class_histogram(
             conf = float(n.confidence)
         if dur < min_duration or conf < min_confidence:
             continue
-        hist[midi % 12] += dur
+        pc = midi % 12
+        w = dur * (bass_weight if midi <= bass_midi_cutoff else 1.0)
+        hist[pc] += w
+        counts[pc] += 1.0
+    if counts.sum() > 0 and count_blend > 0:
+        hist = (1.0 - count_blend) * hist + count_blend * counts * (
+            float(hist.sum()) / float(counts.sum())
+        )
     return hist
 
 
@@ -171,6 +186,32 @@ def _fifths_for(tonic_pc: int, mode: str) -> int:
     # Minor shares the relative major's key signature.
     rel_major_pc = (tonic_pc + 3) % 12
     return int(_MAJOR_FIFTHS.get(_PC_NAMES[rel_major_pc], 0))
+
+
+def _bass_pitch_class(
+    notes: Sequence[NoteEvent] | Sequence[dict],
+    *,
+    bass_midi_cutoff: int = 48,
+    min_duration: float = 0.12,
+    min_confidence: float = 0.20,
+) -> int | None:
+    """Dominant pitch class among low cello notes (open-string / pedal cue)."""
+    hist = np.zeros(12, dtype=np.float64)
+    for n in notes:
+        if isinstance(n, dict):
+            midi = int(n["midi"])
+            dur = float(n.get("duration", 0.0))
+            conf = float(n.get("confidence", 1.0))
+        else:
+            midi = int(n.midi)
+            dur = float(n.duration)
+            conf = float(n.confidence)
+        if midi > bass_midi_cutoff or dur < min_duration or conf < min_confidence:
+            continue
+        hist[midi % 12] += dur
+    if float(hist.sum()) < 0.15:
+        return None
+    return int(np.argmax(hist))
 
 
 def infer_key(
@@ -209,9 +250,39 @@ def infer_key(
             )
             scored.append((score, tonic_pc, mode))
     scored.sort(reverse=True)
+
+    # Cello pedal / open-string cue: if the strongest *bass* pitch class
+    # matches a competitive candidate tonic, prefer that key (e.g. G-major
+    # prelude with open-G pedals beating a B-minor KS false positive).
     best_score, tonic_pc, mode = scored[0]
-    second = scored[1][0] if len(scored) > 1 else -1.0
-    confidence = float(np.clip((best_score - max(second, 0.0)) + 0.5 * best_score, 0.0, 1.0))
+    bass_pc = _bass_pitch_class(
+        notes, min_duration=min_duration, min_confidence=min_confidence
+    )
+    if bass_pc is not None and tonic_pc != bass_pc:
+        for alt_score, alt_tonic, alt_mode in scored[:10]:
+            if alt_tonic != bass_pc:
+                continue
+            if best_score - alt_score > 0.18:
+                continue
+            # Prefer major when the bass tonic's major/minor both appear;
+            # otherwise take the best bass-tonic candidate.
+            bass_opts = [
+                (s, tp, md)
+                for s, tp, md in scored[:10]
+                if tp == bass_pc and best_score - s <= 0.18
+            ]
+            if not bass_opts:
+                break
+            majors = [x for x in bass_opts if x[2] == "major"]
+            pick = majors[0] if majors else bass_opts[0]
+            best_score, tonic_pc, mode = pick
+            break
+
+    others = [s for s, tp, md in scored if not (tp == tonic_pc and md == mode)]
+    second = others[0] if others else -1.0
+    confidence = float(
+        np.clip((best_score - max(second, 0.0)) + 0.5 * best_score, 0.0, 1.0)
+    )
 
     return {
         "name": f"{_PC_NAMES[tonic_pc]} {mode}",

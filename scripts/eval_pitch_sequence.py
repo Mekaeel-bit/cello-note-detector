@@ -120,6 +120,9 @@ def _duration_stats(hyp_path: Path) -> dict:
 def evaluate(hyp_path: Path, ref_path: Path, *, max_ref_notes: int | None = None) -> dict:
     hyp = _load_hyp_midi(hyp_path)
     ref, ref_meta = _load_ref(ref_path)
+    if max_ref_notes is None and ref_meta.get("verified_prefix_notes"):
+        # Prefer the hand-checked opening when scoring short clips.
+        max_ref_notes = int(ref_meta["verified_prefix_notes"])
     if max_ref_notes is not None:
         ref = ref[: max_ref_notes]
     window = _best_window_accuracy(hyp, ref)
