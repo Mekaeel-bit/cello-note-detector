@@ -29,6 +29,7 @@ from cello_note_detector.decode.rhythm import (
     DEFAULT_MIN_REST_SEC,
     analyze_rhythm,
 )
+from cello_note_detector.export import write_midi, write_musicxml
 
 # Repo root: .../src/cello_note_detector/cli.py → parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -82,6 +83,8 @@ def _process_one(
     grid_beats: float,
     min_rest_sec: float,
     no_edge_rests: bool,
+    export_musicxml: bool,
+    export_midi: bool,
 ) -> dict:
     audio, sr = load_mono(wav_path, sr=TARGET_SR)
     duration_s = float(len(audio) / sr)
@@ -156,6 +159,29 @@ def _process_one(
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
     result["_json_path"] = str(json_path)
+
+    if export_musicxml:
+        if skip_rhythm or not result.get("events"):
+            print(
+                f"  warning: MusicXML skipped for {wav_path.name} "
+                "(needs rhythm/events; omit --skip-rhythm)"
+            )
+        else:
+            xml_path = output_dir / f"{wav_path.stem}.musicxml"
+            write_musicxml(result, xml_path, title=wav_path.stem)
+            result["_musicxml_path"] = str(xml_path)
+
+    if export_midi:
+        if skip_rhythm or not result.get("events"):
+            print(
+                f"  warning: MIDI skipped for {wav_path.name} "
+                "(needs rhythm/events; omit --skip-rhythm)"
+            )
+        else:
+            mid_path = output_dir / f"{wav_path.stem}.mid"
+            write_midi(result, mid_path)
+            result["_midi_path"] = str(mid_path)
+
     return result
 
 
@@ -188,6 +214,11 @@ def _print_summary(result: dict) -> None:
     if result["num_notes"] > len(preview):
         print(f"  … {result['num_notes'] - len(preview)} more notes")
 
+    if result.get("_musicxml_path"):
+        print(f"  musicxml → {result['_musicxml_path']}")
+    if result.get("_midi_path"):
+        print(f"  midi → {result['_midi_path']}")
+
     rests = result.get("rests") or []
     for r in rests[:8]:
         dur_val = r.get("duration_value", "?")
@@ -216,8 +247,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="cello-note-detector",
         description=(
             "Monophonic cello WAV → multi-note pyin transcription, "
-            "tempo/rhythm quantization (notes + rests), and optional "
-            "MERT-v1-95M frame embeddings."
+            "tempo/rhythm quantization (notes + rests), optional "
+            "MusicXML/MIDI sheet export, and optional MERT-v1-95M "
+            "frame embeddings."
         ),
     )
     p.add_argument(
@@ -233,7 +265,20 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
-        help="Directory for JSON (and optional .npy) outputs",
+        help="Directory for JSON / MusicXML / MIDI (and optional .npy) outputs",
+    )
+    p.add_argument(
+        "--musicxml",
+        action="store_true",
+        help=(
+            "Also write bass-clef MusicXML next to the JSON "
+            "(requires rhythm; open in MuseScore / Dorico / Finale)"
+        ),
+    )
+    p.add_argument(
+        "--midi",
+        action="store_true",
+        help="Also write a Type-1 MIDI file next to the JSON (requires rhythm)",
     )
     p.add_argument(
         "--model-id",
@@ -346,10 +391,18 @@ def main(argv: list[str] | None = None) -> int:
             grid_beats=args.grid_beats,
             min_rest_sec=args.min_rest_sec,
             no_edge_rests=args.no_edge_rests,
+            export_musicxml=args.musicxml,
+            export_midi=args.midi,
         )
         _print_summary(result)
 
-    print(f"\nDone. Wrote {len(wavs)} JSON file(s) under {output_dir}")
+    extras = []
+    if args.musicxml:
+        extras.append("MusicXML")
+    if args.midi:
+        extras.append("MIDI")
+    extra_bit = f" (+{'/'.join(extras)})" if extras else ""
+    print(f"\nDone. Wrote {len(wavs)} JSON file(s){extra_bit} under {output_dir}")
     return 0
 
 

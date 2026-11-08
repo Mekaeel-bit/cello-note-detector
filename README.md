@@ -2,7 +2,7 @@
 
 Hackathon app for identifying cello notes from **monophonic audio** (video / fingerings later).
 
-**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) → **tempo / beat grid + quantized note durations and rests**, plus optional **MERT-v1-95M** frame embeddings. Not full sheet engraving yet.
+**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) → **tempo / beat grid + quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
 
 ## Setup
 
@@ -45,6 +45,10 @@ python -m cello_note_detector data/multi_note_phrases/ -o outputs/rhythm --skip-
 # Dedicated rest clip (quarters + quarter rests @ 100 BPM)
 python -m cello_note_detector data/multi_note_phrases/rhythm_quarters_with_rests.wav \
   -o outputs/rhythm --skip-mert
+
+# Same clip → JSON + MusicXML + MIDI
+python -m cello_note_detector data/multi_note_phrases/rhythm_quarters_with_rests.wav \
+  -o outputs/sheet --skip-mert --musicxml --midi
 ```
 
 Useful flags:
@@ -53,6 +57,8 @@ Useful flags:
 |------|---------|
 | `--skip-mert` | pyin + rhythm only (no HF model download) |
 | `--skip-rhythm` | notes only (no tempo / rests / duration values) |
+| `--musicxml` | also write bass-clef `.musicxml` next to the JSON |
+| `--midi` | also write Type-1 `.mid` next to the JSON |
 | `--grid-beats 0.25` | snap grid in beats (default sixteenth) |
 | `--min-rest-sec 0.08` | minimum silence gap emitted as a rest |
 | `--no-edge-rests` | omit leading/trailing rests; keep inter-note gaps only |
@@ -78,6 +84,13 @@ For each WAV, writes `outputs/<stem>_notes.json` with:
 - `segmentation`: hop/frame settings, onset times, gap/median options
 - `mert.summary`: embedding shape / mean / std (unless `--skip-mert`)
 
+Optional sheet artifacts (same stem, next to the JSON):
+
+| Flag | File | Contents |
+|------|------|----------|
+| `--musicxml` | `<stem>.musicxml` | Bass-clef partwise MusicXML 3.1 (notes + rests + tempo) |
+| `--midi` | `<stem>.mid` | Type-1 MIDI from the quantized timeline (rests = silence) |
+
 Example rhythm fields on a note / rest:
 
 ```json
@@ -91,7 +104,15 @@ Example rhythm fields on a note / rest:
 }
 ```
 
-Console prints note preview, rest preview, estimated BPM, and optional MERT shape.
+Console prints note preview, rest preview, estimated BPM, export paths, and optional MERT shape.
+
+### Opening MusicXML
+
+1. Run with `--musicxml` (rhythm must stay enabled — do not pass `--skip-rhythm`).
+2. Open the `.musicxml` file in **[MuseScore](https://musescore.org/)** (File → Open), or Dorico / Finale / Sibelius / flat.io.
+3. You should see a **bass-clef** cello staff in 4/4 with the estimated metronome mark. Rests appear as rest glyphs, not missing notes.
+
+MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
 ## Multi-note tests
 
@@ -119,12 +140,13 @@ python scripts/generate_multi_note_phrases.py
 src/cello_note_detector/
   audio/          # load, pyin + onsets, MERT embed
   decode/         # note events + rhythm (tempo, quantize, rests)
+  export/         # MusicXML + MIDI writers
   cli.py          # entrypoint
 scripts/
   generate_multi_note_phrases.py
 data/Recordings/          # sample-pack cello WAVs
 data/multi_note_phrases/  # synthetic multi-note + rhythm test clips
-outputs/                  # generated JSON / .npy (gitignored)
+outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 ```
 
 ## Notes / limits
@@ -134,4 +156,5 @@ outputs/                  # generated JSON / .npy (gitignored)
 - Segmentation splits on MIDI pitch changes, short gaps, and spectral onsets (so repeated same-pitch notes can separate). It is still a classical baseline — vibrato, slides, and noisy real recordings can merge/split notes incorrectly.
 - Tempo/BPM is a **heuristic** (`beat_track` + note IOIs). Short clips, rubato, or single sustained drones can yield unstable or octave-ambiguous BPM; quantized `duration_value` labels follow that estimate.
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
-- Out of scope for this milestone: polished MusicXML/sheet engraving, video, bowings/fingerings, MERT fine-tuning.
+- MusicXML/MIDI export is a **straight transcription dump** (4/4, C major key signature, bass clef, sequential quantized events). It does not infer key/meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
+- Out of scope for this milestone: website `/transcribe` backend, video, bowings/fingerings, MERT fine-tuning.
