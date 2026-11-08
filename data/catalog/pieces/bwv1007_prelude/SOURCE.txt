@@ -1,0 +1,26 @@
+Bach Prélude — Mutopia PD edition (sandbox)
+
+Source URLs:
+  Mutopia piece 517: https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=517
+  Mutopia FTP tree: https://www.mutopiaproject.org/ftp/BachJS/BWV1007/bwv1007/
+  GitHub mirror LY: https://github.com/MutopiaProject/MutopiaProject/tree/master/ftp/BachJS/BWV1007/bwv1007
+  IMSLP work: https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)
+
+Local paths:
+  LilyPond: data/catalog/pieces/bwv1007_prelude/source/mutopia517_prelude.ly
+  Edition MusicXML: data/catalog/pieces/bwv1007_prelude/edition.musicxml
+  Demo open: outputs/bach_id/Bach-cello-suite-1.musicxml  (verbatim copy)
+
+How built (this sandbox):
+  LilyPond 2.24.4 compiled mutopia517_prelude.ly with cello \transpose c c,
+  and \midi { \tempo 4 = 80 }. MusicXML derived from that compiler MIDI;
+  Mutopia LY slurs overlaid. Peak pitch G4 (Mutopia ground truth).
+
+Teddy verify in MuseScore:
+  1) Open outputs/bach_id/Bach-cello-suite-1.musicxml (NOT *_transcribed*)
+  2) Tempo mark ♩=80 (Mutopia), not the audio-estimated ~67
+  3) Sixteenth motion continues through mid/late piece (no wholesale 16th→8th flip)
+  4) Page-2 / late bars reach high A-string figures (G4 in Mutopia/Schirmer)
+  5) Compare against Mutopia PDF from piece 517
+
+NOT merge-ready until Teddy signs off on MuseScore vs Mutopia PDF.

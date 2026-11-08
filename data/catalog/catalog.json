@@ -1,13 +1,13 @@
 {
   "version": 2,
-  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli Ricercari are first test entries \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. On MATCH the primary .musicxml is a verbatim copy of the edition file (slurs/trills preserved). Unknown pieces fall back to audio transcription.",
+  "description": "Extensible local catalog of public-domain cello scores (IMSLP/Mutopia/CC0 MusicXML). Bach Prelude + Gabrielli are first TEST entries only \u2014 add any PD MusicXML with scripts/add_catalog_piece.py. SANDBOX: not merge-ready until MuseScore output matches PD editions (Bach Mutopia PDF; Gabrielli needs real IMSLP MXL #923358 / WIMA 1st Ricercar).",
   "default_min_confidence": 0.55,
   "entries": [
     {
       "id": "bwv1007_prelude",
       "title": "Bach Cello Suite No. 1, BWV 1007 \u2014 Pr\u00e9lude",
       "composer": "Johann Sebastian Bach",
-      "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain)",
+      "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain); LilyPond\u2192MIDI\u2192MusicXML",
       "license": "Public Domain",
       "imslp_work": "https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)",
       "key": "G major",
@@ -21,7 +21,7 @@
       "id": "gabrielli_ricercari",
       "title": "Gabrielli Ricercari for Solo Cello (G minor)",
       "composer": "Domenico Gabrielli",
-      "edition": "WIMA/IMSLP-aligned catalog MusicXML (swap in Amaracle CC0 MXL #923358 via add_catalog_piece.py)",
+      "edition": "PLACEHOLDER \u2014 replace with IMSLP #923358 CC0 MXL or WIMA Gomez 1st Ricercar MusicXML (see SOURCE.txt)",
       "license": "Public Domain / CC0 preferred",
       "imslp_work": "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)",
       "key": "G minor",
@@ -29,7 +29,7 @@
       "edition_musicxml": "data/catalog/pieces/gabrielli_ricercari/edition.musicxml",
       "fingerprint_json": "data/catalog/pieces/gabrielli_ricercari/fingerprint.json",
       "typical_duration_sec": 105.0,
-      "match_notes": "Fingerprint currently audio-aligned to data/multi_note_phrases/gabrielli.wav for demo matching. After dropping the IMSLP CC0 MXL, re-run add_catalog_piece.py so fingerprint comes from the edition file."
+      "match_notes": "Fingerprint audio-aligned for demo MATCH only. Primary MusicXML is NOT the correct PD edition until replaced."
     }
   ]
 }

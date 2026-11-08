@@ -6,7 +6,7 @@ Hackathon app for identifying cello notes from **monophonic audio** (video / fin
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
-**Song ID policy:** extensible local PD MusicXML catalog (`data/catalog/` — IMSLP / Mutopia / CC0). Bach + Gabrielli are first test entries, not a closed list. Browse with `--list-catalog` / `--search-catalog`. On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run.
+**Song ID policy:** extensible local PD MusicXML catalog (`data/catalog/` — IMSLP / Mutopia / CC0). Bach + Gabrielli are first **test** entries only, not a closed list — add any PD score with `scripts/add_catalog_piece.py`. Browse with `--list-catalog` / `--search-catalog`. On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run. **Sandbox / not merge-ready** until MuseScore output matches the PD editions (see `data/catalog/pieces/*/SOURCE.txt`).
 
 ## Setup
 

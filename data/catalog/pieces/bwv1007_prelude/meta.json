@@ -2,7 +2,7 @@
   "id": "bwv1007_prelude",
   "title": "Bach Cello Suite No. 1, BWV 1007 \u2014 Pr\u00e9lude",
   "composer": "Johann Sebastian Bach",
-  "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain)",
+  "edition": "Mutopia-2018/01/19-517 after Schirmer, 1916 (Public Domain); LilyPond\u2192MIDI\u2192MusicXML",
   "license": "Public Domain",
   "imslp_work": "https://imslp.org/wiki/Cello_Suite_No.1_in_G_major,_BWV_1007_(Bach,_Johann_Sebastian)",
   "key": "G major",
@@ -11,12 +11,12 @@
   "fingerprint_json": "data/catalog/pieces/bwv1007_prelude/fingerprint.json",
   "typical_duration_sec": 160.0,
   "ornaments": {
-    "slurs": 118,
+    "slurs": 79,
     "trills_or_waves": 0,
-    "ties": 3,
+    "ties": 0,
     "has_slurs": true,
     "has_trills": false
   },
-  "num_notes": 632,
-  "num_measures": 52
+  "num_notes": 654,
+  "num_measures": 42
 }

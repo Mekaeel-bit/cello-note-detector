@@ -1,0 +1,26 @@
+SANDBOX BLOCKER — not merge-ready for Gabrielli
+
+Teddy’s “correct” screenshot is the WIMA / Alberto Gomez “1st Ricercar” edition
+(IMSLP #187414 PDF), NOT our provisional generated MusicXML.
+
+Required PD MusicXML (drop in via add_catalog_piece.py):
+  Preferred CC0 MusicXML/MXL: IMSLP #923358 (Amaracle, CC0 1.0)
+    Work: https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)
+    Index: https://imslp.org/wiki/Special:ImagefromIndex/923358
+  Reference PDF (correct markings): IMSLP #187414 WIMA Gomez
+    https://ks15.imslp.org/files/imglnks/usimg/f/fa/IMSLP187414-WIMA.d4a2-GabrielliRicercares.pdf
+
+Automated IMSLP MXL fetch is blocked (disclaimer/redirect wall) in this agent
+environment. After downloading locally:
+
+  python3 scripts/add_catalog_piece.py \
+    --id gabrielli_ricercari \
+    --musicxml ~/Downloads/IMSLP923358.mxl \
+    --title "Gabrielli 7 Ricercari — 1st Ricercar" \
+    --composer "Domenico Gabrielli" \
+    --license "CC0 1.0" \
+    --imslp "https://imslp.org/wiki/Ricercari,_canone_e_sonate_per_violoncello_(Gabrielli,_Domenico)" \
+    --typical-duration-sec 105
+
+Then re-run identify on data/multi_note_phrases/gabrielli.wav and confirm
+outputs/gabrielli_id/gabrielli.musicxml matches the correct PDF openings/markings.
