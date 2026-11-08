@@ -6,7 +6,11 @@ import json
 import re
 from pathlib import Path
 
-from cello_note_detector.identify.catalog import load_catalog
+from cello_note_detector.identify.catalog import (
+    format_catalog_listing,
+    load_catalog,
+    search_catalog,
+)
 from cello_note_detector.identify.match import identify_sequence, score_against_entry
 from cello_note_detector.identify.musicxml_edition import (
     copy_edition_musicxml,
@@ -33,6 +37,19 @@ def test_load_catalog_has_bach_and_gabrielli():
     assert bach.edition_musicxml.is_file()
     assert bach.num_notes >= 500
     assert bach.ornaments.get("has_slurs") is True
+
+
+def test_search_catalog_pd_lookup():
+    entries = load_catalog(_CATALOG, repo_root=_REPO)
+    assert {e.id for e in search_catalog("", entries=entries)} == {
+        e.id for e in entries
+    }
+    bach_hits = search_catalog("bach", entries=entries)
+    assert [e.id for e in bach_hits] == ["bwv1007_prelude"]
+    gab_hits = search_catalog("Gabrielli", entries=entries)
+    assert [e.id for e in gab_hits] == ["gabrielli_ricercari"]
+    assert "gabrielli_ricercari" in format_catalog_listing(gab_hits)
+    assert search_catalog("not-a-real-piece-xyz", entries=entries) == []
 
 
 def test_bach_edition_musicxml_playable_octaves_and_slurs():

@@ -18,6 +18,17 @@ data/catalog/
     source/                    # optional LilyPond / provenance sidecars
 ```
 
+## Browse / look up
+
+```bash
+python -m cello_note_detector --list-catalog
+python -m cello_note_detector --search-catalog bach
+python -m cello_note_detector --search-catalog IMSLP
+```
+
+Audio identify searches the same index by pitch fingerprint; unknown audio
+falls back to transcription.
+
 ## Add a piece
 
 ```bash

@@ -35,8 +35,10 @@ from cello_note_detector.decode.rhythm import (
 from cello_note_detector.export import write_midi, write_musicxml
 from cello_note_detector.identify import (
     attach_catalog_score,
+    format_catalog_listing,
     identify_sequence,
     load_catalog,
+    search_catalog,
 )
 from cello_note_detector.identify.catalog import DEFAULT_CATALOG_PATH
 
@@ -560,11 +562,37 @@ def build_parser() -> argparse.ArgumentParser:
             f"(default: {DEFAULT_CATALOG_PATH})"
         ),
     )
+    p.add_argument(
+        "--list-catalog",
+        action="store_true",
+        help=(
+            "Print every local PD catalog entry and exit "
+            "(no audio processing). Use --search-catalog Q to filter."
+        ),
+    )
+    p.add_argument(
+        "--search-catalog",
+        metavar="QUERY",
+        default=None,
+        help=(
+            "PD lookup: filter catalog by id/title/composer/edition/IMSLP "
+            "substring and exit. Empty catalog → transcription fallback on "
+            "identify runs; this flag only lists matches."
+        ),
+    )
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.list_catalog or args.search_catalog is not None:
+        query = args.search_catalog if args.search_catalog is not None else ""
+        hits = search_catalog(query, args.catalog)
+        print(f"Catalog ({len(hits)} hit(s)) from {args.catalog}")
+        print(format_catalog_listing(hits))
+        return 0
+
     wavs = _discover_wavs(Path(args.path))
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

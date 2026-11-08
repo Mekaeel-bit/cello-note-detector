@@ -6,7 +6,7 @@ Hackathon app for identifying cello notes from **monophonic audio** (video / fin
 
 Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
-**Song ID policy:** only public-domain editions (Mutopia / IMSLP-aligned sources already under `data/reference/`). On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run.
+**Song ID policy:** extensible local PD MusicXML catalog (`data/catalog/` — IMSLP / Mutopia / CC0). Bach + Gabrielli are first test entries, not a closed list. Browse with `--list-catalog` / `--search-catalog`. On no match / low confidence the CLI **falls back to the audio transcription export** — a missing public score never fails the run.
 
 ## Setup
 
@@ -164,6 +164,13 @@ python -m cello_note_detector data/multi_note_phrases/gabrielli.wav \
 # Fallback: unknown solo → transcription (no failure)
 python -m cello_note_detector data/multi_note_phrases/scale_c_major_cello.wav \
   -o outputs/fallback --skip-mert --identify --musicxml --midi
+```
+
+Browse / look up the local PD index:
+
+```bash
+python -m cello_note_detector --list-catalog
+python -m cello_note_detector --search-catalog gabrielli
 ```
 
 Add any PD edition:

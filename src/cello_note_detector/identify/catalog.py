@@ -147,3 +147,63 @@ def load_catalog(
             )
         )
     return entries
+
+
+def search_catalog(
+    query: str,
+    catalog_path: str | Path | None = None,
+    *,
+    repo_root: Path | None = None,
+    entries: list[CatalogEntry] | None = None,
+) -> list[CatalogEntry]:
+    """Filter catalog entries by substring match on id/title/composer/edition.
+
+    This is the human-facing PD lookup over the local extensible index.
+    Motif matching for audio ID lives in ``match.identify_sequence``.
+    Empty ``query`` returns every loaded entry.
+    """
+    loaded = (
+        list(entries)
+        if entries is not None
+        else load_catalog(catalog_path, repo_root=repo_root)
+    )
+    q = (query or "").strip().lower()
+    if not q:
+        return loaded
+    hits: list[CatalogEntry] = []
+    for entry in loaded:
+        hay = " ".join(
+            [
+                entry.id,
+                entry.title,
+                entry.composer,
+                entry.edition,
+                entry.license,
+                entry.imslp_work or "",
+                entry.key or "",
+            ]
+        ).lower()
+        if q in hay:
+            hits.append(entry)
+    return hits
+
+
+def format_catalog_listing(entries: list[CatalogEntry]) -> str:
+    """Pretty-print catalog entries for CLI / docs."""
+    if not entries:
+        return "(no catalog entries)"
+    lines: list[str] = []
+    for e in entries:
+        dur = (
+            f", ~{e.typical_duration_sec:.0f}s"
+            if e.typical_duration_sec is not None
+            else ""
+        )
+        lines.append(
+            f"{e.id}: {e.title} — {e.composer} [{e.license}] "
+            f"({e.num_notes} notes{dur})"
+        )
+        lines.append(f"  edition: {e.edition_musicxml}")
+        if e.imslp_work:
+            lines.append(f"  imslp: {e.imslp_work}")
+    return "\n".join(lines)
