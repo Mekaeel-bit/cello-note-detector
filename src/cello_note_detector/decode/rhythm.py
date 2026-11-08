@@ -53,6 +53,18 @@ DURATION_CATALOG_COARSE: tuple[tuple[float, str], ...] = (
     (0.5, "eighth"),
 )
 
+# Score-oriented: favour written equal subdivisions (esp. sixteenths).
+DURATION_CATALOG_SCORE: tuple[tuple[float, str], ...] = (
+    (4.0, "whole"),
+    (3.0, "dotted_half"),
+    (2.0, "half"),
+    (1.5, "dotted_quarter"),
+    (1.0, "quarter"),
+    (0.75, "dotted_eighth"),
+    (0.5, "eighth"),
+    (0.25, "sixteenth"),
+)
+
 # Back-compat alias (fine catalog).
 DURATION_CATALOG = DURATION_CATALOG_FINE
 
@@ -71,6 +83,16 @@ MAX_TEMPO_IOI_SEC = 1.8
 # Ignore vibrato flicker when scoring duration-vs-BPM fit.
 MIN_TEMPO_NOTE_DUR_SEC = 0.15
 
+# Equal-stream (score-intent) reconstruction: detect moto-perpetuo /
+# continuous equal-note writing and snap to the written unit rather than
+# raw performance timing (e.g. held open-string flavour → equal sixteenths).
+EQUAL_STREAM_MIN_NOTES = 8
+EQUAL_STREAM_MAX_IOI_CV = 0.35
+EQUAL_STREAM_MIN_IOI_SEC = 0.05
+EQUAL_STREAM_MAX_IOI_SEC = 0.90
+EQUAL_STREAM_HOLD_MULT = 1.85  # held notes ≥ this × unit → integer multiples
+EQUAL_STREAM_REST_SUPPRESS_MULT = 1.35  # suppress micro-gaps under this × unit
+
 QUANTIZE_PRESETS: dict[str, dict] = {
     "coarse": {
         "grid_beats": 0.5,
@@ -78,6 +100,7 @@ QUANTIZE_PRESETS: dict[str, dict] = {
         "min_rest_sec": 0.18,
         "min_rest_beats": 0.5,
         "min_note_beats": 0.5,
+        "score_intent": False,
     },
     "medium": {
         "grid_beats": 0.5,
@@ -85,6 +108,7 @@ QUANTIZE_PRESETS: dict[str, dict] = {
         "min_rest_sec": 0.16,
         "min_rest_beats": 0.5,
         "min_note_beats": 0.5,
+        "score_intent": False,
     },
     "fine": {
         "grid_beats": 0.25,
@@ -92,11 +116,25 @@ QUANTIZE_PRESETS: dict[str, dict] = {
         "min_rest_sec": 0.08,
         "min_rest_beats": 0.2,
         "min_note_beats": 0.125,
+        "score_intent": False,
+    },
+    # Score-oriented: reconstruct written equal subdivisions when the
+    # performance looks like a continuous equal-note stream. General
+    # heuristic (not piece-specific); Bach Prelude is the sandbox test.
+    "score": {
+        "grid_beats": 0.25,
+        "catalog": DURATION_CATALOG_SCORE,
+        "min_rest_sec": 0.12,
+        "min_rest_beats": 0.25,
+        "min_note_beats": 0.25,
+        "score_intent": True,
     },
 }
 DEFAULT_QUANTIZE = "medium"
 # Soft bias: prefer a longer catalog value when nearly as close (readable).
 DURATION_LONG_BIAS = 0.12
+# Under score intent, prefer the stream unit over longer near-fits.
+SCORE_DURATION_LONG_BIAS = 0.04
 
 
 @dataclass(frozen=True)
@@ -131,7 +169,8 @@ def resolve_quantize_preset(
     preset_name = (name or DEFAULT_QUANTIZE).lower().strip()
     if preset_name not in QUANTIZE_PRESETS:
         raise ValueError(
-            f"Unknown quantize preset '{name}'. Choose coarse|medium|fine."
+            f"Unknown quantize preset '{name}'. "
+            "Choose coarse|medium|fine|score."
         )
     cfg = dict(QUANTIZE_PRESETS[preset_name])
     cfg["name"] = preset_name
@@ -140,6 +179,91 @@ def resolve_quantize_preset(
     if min_rest_sec is not None:
         cfg["min_rest_sec"] = float(min_rest_sec)
     return cfg
+
+
+def detect_equal_note_stream(
+    notes: Sequence[NoteEvent],
+    *,
+    min_notes: int = EQUAL_STREAM_MIN_NOTES,
+    max_cv: float = EQUAL_STREAM_MAX_IOI_CV,
+    min_ioi_sec: float = EQUAL_STREAM_MIN_IOI_SEC,
+    max_ioi_sec: float = EQUAL_STREAM_MAX_IOI_SEC,
+) -> dict | None:
+    """Detect a continuous roughly-equal inter-onset stream (score intent).
+
+    Returns stream stats when the monophonic onsets look like equal written
+    subdivisions (moto perpetuo / prelude-style), else ``None``. Piece-agnostic:
+    uses IOI statistics only — never a hard-coded melody.
+    """
+    if len(notes) < min_notes:
+        return None
+    ordered = sorted(notes, key=lambda n: (n.onset, n.offset))
+    onsets = np.asarray([float(n.onset) for n in ordered], dtype=np.float64)
+    iois = np.diff(onsets)
+    core = iois[(iois >= min_ioi_sec) & (iois <= max_ioi_sec)]
+    if core.size < max(4, min_notes // 2):
+        return None
+    med = float(np.median(core))
+    if med <= 0:
+        return None
+    cv = float(np.std(core) / med)
+    # Fraction of IOIs within 40% of the median (robust equal-stream vote).
+    near = float(np.mean(np.abs(core - med) <= 0.40 * med))
+    if cv > max_cv and near < 0.65:
+        return None
+    # Map median IOI to a likely written unit in beats at a provisional BPM
+    # where that unit is a sixteenth / eighth / eighth-triplet-ish.
+    # Prefer sixteenth when IOI is short; eighth when longer.
+    if med <= 0.28:
+        unit_beats = 0.25  # sixteenth
+    elif med <= 0.55:
+        unit_beats = 0.5  # eighth
+    else:
+        unit_beats = 1.0  # quarter
+    bpm = 60.0 * unit_beats / med
+    bpm = _clamp_bpm(bpm, min_bpm=DEFAULT_MIN_BPM, max_bpm=DEFAULT_MAX_BPM)
+    return {
+        "detected": True,
+        "unit_sec": round(med, 4),
+        "unit_beats": unit_beats,
+        "ioi_cv": round(cv, 4),
+        "ioi_near_frac": round(near, 4),
+        "num_iois": int(core.size),
+        "suggested_bpm": round(float(bpm), 2),
+        "method": "equal_note_stream",
+    }
+
+
+def _snap_duration_to_stream_unit(
+    duration_sec: float,
+    *,
+    unit_sec: float,
+    unit_beats: float,
+    catalog: Sequence[tuple[float, str]],
+    hold_mult: float = EQUAL_STREAM_HOLD_MULT,
+) -> tuple[str, float]:
+    """Map a sounding length to written equal-subdivision intent.
+
+    Near-unit notes → exactly one unit (so held open-string flavour still
+    reads as a written sixteenth/eighth). Clearly longer notes → integer
+    multiples of the unit, snapped to the catalog.
+    """
+    if unit_sec <= 0 or duration_sec <= 0:
+        return nearest_duration_value(
+            unit_beats, catalog=catalog, min_beats=unit_beats, long_bias=0.0
+        )
+    ratio = float(duration_sec) / float(unit_sec)
+    if ratio < hold_mult:
+        n_units = 1
+    else:
+        n_units = max(1, int(round(ratio)))
+    target_beats = n_units * unit_beats
+    return nearest_duration_value(
+        target_beats,
+        catalog=catalog,
+        min_beats=unit_beats,
+        long_bias=SCORE_DURATION_LONG_BIAS,
+    )
 
 
 def _clamp_bpm(bpm: float, *, min_bpm: float, max_bpm: float) -> float:
@@ -728,8 +852,14 @@ def analyze_rhythm(
     include_leading_rests: bool = True,
     include_trailing_rests: bool = True,
     bpm_override: float | None = None,
+    score_intent: bool = False,
 ) -> dict:
     """Full rhythm layer: tempo + quantized notes + quantized rests.
+
+    When ``score_intent`` is True and an equal-note stream is detected,
+    durations snap to the written subdivision unit (performance holds /
+    rubato still read as equal sixteenths/eighths). Heuristic is general
+    for monophonic cello — not hard-coded to any piece.
 
     Returns a JSON-ready dict with keys ``tempo``, ``notes`` (rhythm
     fields only, parallel to input order), ``rests``, and ``events``
@@ -737,36 +867,108 @@ def analyze_rhythm(
     """
     note_onsets = [float(n.onset) for n in notes]
     note_durations = [float(n.duration) for n in notes]
+
+    stream = detect_equal_note_stream(notes) if score_intent else None
+    effective_bpm_override = bpm_override
+    if (
+        score_intent
+        and stream is not None
+        and (bpm_override is None or bpm_override <= 0)
+    ):
+        # Prefer stream-implied tempo (written pulse) over raw beat_track.
+        effective_bpm_override = float(stream["suggested_bpm"])
+
     tempo = estimate_tempo(
         audio,
         sr=sr,
         note_onsets=note_onsets,
         note_durations=note_durations,
         hop_length=hop_length,
-        bpm_override=bpm_override,
+        bpm_override=effective_bpm_override,
     )
+    if stream is not None and bpm_override is None:
+        tempo = dict(tempo)
+        tempo["equal_stream"] = stream
+        tempo["method"] = f"{tempo.get('method', '')}+equal_stream".strip("+")
+        if effective_bpm_override is not None:
+            tempo["method"] = (
+                f"equal_note_stream(unit={stream['unit_beats']},"
+                f"cv={stream['ioi_cv']})"
+            )
+            tempo["bpm"] = float(stream["suggested_bpm"])
+            # Rebuild beat grid at stream BPM anchored on first note.
+            beat_period = 60.0 / float(tempo["bpm"])
+            tempo["beat_period_sec"] = round(beat_period, 4)
+            duration_s = float(len(audio) / sr)
+            anchor0 = float(note_onsets[0]) if note_onsets else 0.0
+            grid: list[float] = []
+            t = anchor0
+            while t - beat_period >= -1e-6:
+                t -= beat_period
+            while t <= duration_s + 1e-6:
+                if t >= -1e-6:
+                    grid.append(round(float(t), 4))
+                t += beat_period
+            tempo["beat_times"] = grid
+            tempo["num_beats"] = len(grid)
+
     bpm = float(tempo["bpm"])
     anchor = float(tempo["beat_times"][0]) if tempo["beat_times"] else (
         note_onsets[0] if note_onsets else 0.0
     )
 
+    # Score-intent grid: snap onsets to the stream unit when detected.
+    effective_grid = grid_beats
+    effective_min_note = min_note_beats
+    effective_min_rest_sec = min_rest_sec
+    effective_min_rest_beats = min_rest_beats
+    long_bias = DURATION_LONG_BIAS
+    if stream is not None:
+        effective_grid = float(stream["unit_beats"])
+        effective_min_note = float(stream["unit_beats"])
+        # Suppress articulation micro-gaps so continuous streams stay rest-free.
+        effective_min_rest_sec = max(
+            min_rest_sec,
+            float(stream["unit_sec"]) * EQUAL_STREAM_REST_SUPPRESS_MULT,
+        )
+        effective_min_rest_beats = float(stream["unit_beats"])
+
     note_rhythm: list[dict] = []
     for n in notes:
-        q = quantize_interval(
-            float(n.onset),
-            float(n.duration),
-            bpm=bpm,
-            grid=grid_beats,
-            tempo_anchor_sec=anchor,
-            catalog=catalog,
-            min_beats=min_note_beats,
-        )
+        if stream is not None:
+            onset_beats = seconds_to_beats(float(n.onset) - anchor, bpm)
+            q_onset = quantize_beats(onset_beats, grid=effective_grid)
+            name, q_dur = _snap_duration_to_stream_unit(
+                float(n.duration),
+                unit_sec=float(stream["unit_sec"]),
+                unit_beats=float(stream["unit_beats"]),
+                catalog=catalog,
+            )
+            duration_beats = seconds_to_beats(float(n.duration), bpm)
+            q = QuantizedRhythm(
+                onset_beats=round(onset_beats, 4),
+                duration_beats=round(duration_beats, 4),
+                quantized_onset_beats=round(q_onset, 4),
+                quantized_duration_beats=round(q_dur, 4),
+                duration_value=name,
+                duration_value_beats=q_dur,
+            )
+        else:
+            q = quantize_interval(
+                float(n.onset),
+                float(n.duration),
+                bpm=bpm,
+                grid=effective_grid,
+                tempo_anchor_sec=anchor,
+                catalog=catalog,
+                min_beats=effective_min_note,
+            )
         note_rhythm.append(_rhythm_fields(q))
 
     raw_rests = extract_rests(
         notes,
         audio_duration_sec=float(len(audio) / sr),
-        min_rest_sec=min_rest_sec,
+        min_rest_sec=effective_min_rest_sec,
         include_leading=include_leading_rests,
         include_trailing=include_trailing_rests,
     )
@@ -777,14 +979,14 @@ def analyze_rhythm(
             float(r.onset),
             float(r.duration),
             bpm=bpm,
-            grid=grid_beats,
+            grid=effective_grid,
             tempo_anchor_sec=anchor,
             catalog=catalog,
-            min_beats=min_rest_beats,
+            min_beats=effective_min_rest_beats,
         )
         if (
-            q.quantized_duration_beats < min_rest_beats
-            and q.duration_beats < min_rest_beats
+            q.quantized_duration_beats < effective_min_rest_beats
+            and q.duration_beats < effective_min_rest_beats
         ):
             continue
         entry = asdict(r)
@@ -811,10 +1013,12 @@ def analyze_rhythm(
 
     return {
         "tempo": tempo,
-        "grid_beats": grid_beats,
-        "min_rest_sec": min_rest_sec,
-        "min_rest_beats": min_rest_beats,
-        "min_note_beats": min_note_beats,
+        "grid_beats": effective_grid,
+        "min_rest_sec": effective_min_rest_sec,
+        "min_rest_beats": effective_min_rest_beats,
+        "min_note_beats": effective_min_note,
+        "score_intent": bool(score_intent),
+        "equal_stream": stream,
         "note_rhythm": note_rhythm,
         "rests": rests_out,
         "num_rests": len(rests_out),

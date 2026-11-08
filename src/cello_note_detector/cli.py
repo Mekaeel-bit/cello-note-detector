@@ -129,6 +129,7 @@ def _process_one(
             include_leading_rests=not no_edge_rests,
             include_trailing_rests=not no_edge_rests,
             bpm_override=bpm_override,
+            score_intent=bool(quantize_cfg.get("score_intent", False)),
         )
         note_dicts = _merge_note_rhythm(note_dicts, rhythm_info["note_rhythm"])
         rests = rhythm_info["rests"]
@@ -170,9 +171,15 @@ def _process_one(
             "min_rest_sec": rhythm_info["min_rest_sec"],
             "min_rest_beats": rhythm_info["min_rest_beats"],
             "min_note_beats": rhythm_info["min_note_beats"],
+            "score_intent": rhythm_info.get("score_intent", False),
+            "equal_stream": rhythm_info.get("equal_stream"),
             "method": (
-                "spectral-onset + beat_track blend; "
-                "coarser duration catalog snap"
+                "score-intent equal-stream reconstruction"
+                if rhythm_info.get("equal_stream")
+                else (
+                    "spectral-onset + beat_track blend; "
+                    "coarser duration catalog snap"
+                )
             ),
         }
         result["num_rests"] = rhythm_info["num_rests"]
@@ -349,11 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--quantize",
-        choices=("coarse", "medium", "fine"),
+        choices=("coarse", "medium", "fine", "score"),
         default=DEFAULT_QUANTIZE,
         help=(
             "Rhythm coarseness preset: coarse (quarters/eighths), "
-            f"medium (default; +sixteenths), fine (incl. 32nds). "
+            "medium (default; +sixteenths), fine (incl. 32nds), "
+            "score (equal-stream / written-intent reconstruction). "
             f"Default: {DEFAULT_QUANTIZE}"
         ),
     )

@@ -65,7 +65,7 @@ Useful flags:
 | `--skip-rhythm` | notes only (no tempo / rests / duration values) |
 | `--bpm 120` | override estimated tempo (BPM) |
 | `--key Gm` | override inferred key (`Gm`, `Bb`, `D major`, `A minor`, …) |
-| `--quantize medium` | coarseness preset: `coarse` / `medium` (default) / `fine` |
+| `--quantize medium` | coarseness preset: `coarse` / `medium` (default) / `fine` / `score` |
 | `--musicxml` | also write bass-clef `.musicxml` next to the JSON |
 | `--midi` | also write Type-1 `.mid` next to the JSON |
 | `--grid-beats 0.5` | override snap grid in beats (preset default: eighth) |
@@ -86,6 +86,7 @@ Useful flags:
 | `coarse` | eighth | whole → eighth (no 16ths/32nds) | readable MuseScore drafts |
 | `medium` (default) | eighth | + sixteenths | balanced |
 | `fine` | sixteenth | + dotted 16ths / 32nds | old dense behaviour |
+| `score` | sixteenth | sixteenths+ (equal-stream snap) | written-intent / moto-perpetuo reconstruction |
 
 ### Output
 
