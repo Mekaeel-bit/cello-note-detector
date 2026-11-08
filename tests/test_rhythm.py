@@ -89,3 +89,31 @@ def test_analyze_rhythm_quarters_with_rests():
 
 def test_seconds_to_beats():
     assert abs(seconds_to_beats(0.6, 100.0) - 1.0) < 1e-9
+
+
+def test_coarse_catalog_rejects_thirty_seconds():
+    from cello_note_detector.decode.rhythm import (
+        DURATION_CATALOG_COARSE,
+        nearest_duration_value,
+        resolve_quantize_preset,
+    )
+
+    name, beats = nearest_duration_value(
+        0.14, catalog=DURATION_CATALOG_COARSE, min_beats=0.5
+    )
+    assert name == "eighth"
+    assert beats == 0.5
+    cfg = resolve_quantize_preset("coarse")
+    assert cfg["grid_beats"] == 0.5
+    assert "thirty_second" not in {n for _b, n in cfg["catalog"]}
+
+
+def test_bpm_override_skips_estimation():
+    sr = 24_000
+    audio = np.zeros(sr, dtype=np.float32)
+    notes = [_note(48, 0.1, 0.4), _note(50, 0.6, 0.4)]
+    result = analyze_rhythm(
+        audio, notes, sr=sr, bpm_override=120.0, min_rest_sec=0.08
+    )
+    assert abs(result["tempo"]["bpm"] - 120.0) < 0.01
+    assert result["tempo"]["method"] == "cli_override"

@@ -16,15 +16,20 @@ DEFAULT_FRAME_LENGTH = 2048
 DEFAULT_HOP_LENGTH = 256
 
 # Segmentation defaults tuned for short monophonic cello phrases.
-DEFAULT_MIN_DURATION = 0.04
-DEFAULT_GAP_TOLERANCE = 0.06
-DEFAULT_MEDIAN_FILTER_SIZE = 5
+# Slightly longer min duration + wider median window reduce vibrato /
+# bow-noise splits that shatter sustained notes into 32nds.
+DEFAULT_MIN_DURATION = 0.06
+DEFAULT_GAP_TOLERANCE = 0.08
+DEFAULT_MEDIAN_FILTER_SIZE = 9
 DEFAULT_ONSET_WAIT = 0.08
 DEFAULT_ONSET_DELTA = 0.1
 # Ignore weak spectral peaks (sustained drones / vibrato). Real note
 # attacks on the synthetic phrases sit well above this; sample-pack
 # drones mostly do not.
 DEFAULT_MIN_ONSET_STRENGTH = 1.2
+# Merge adjacent ±1-semitone flicker shorter than this into neighbours.
+DEFAULT_FLICKER_MERGE_SEC = 0.12
+DEFAULT_FLICKER_SEMI_TONES = 1
 
 
 def detect_f0(
@@ -236,6 +241,106 @@ def f0_to_note_events(
     return events
 
 
+def merge_pitch_flicker(
+    events: list[NoteEvent],
+    *,
+    max_flicker_sec: float = DEFAULT_FLICKER_MERGE_SEC,
+    max_semitones: int = DEFAULT_FLICKER_SEMI_TONES,
+) -> list[NoteEvent]:
+    """Merge short ±N-semitone neighbors into the surrounding stable pitch.
+
+    Vibrato / pyin jitter often emits G–F#–G micro-notes; folding those
+    into the dominant pitch keeps rhythm quantization from inventing 32nds.
+    """
+    if len(events) < 2 or max_flicker_sec <= 0:
+        return events
+
+    ordered = sorted(events, key=lambda e: (e.onset, e.offset))
+    merged: list[NoteEvent] = [ordered[0]]
+
+    for ev in ordered[1:]:
+        prev = merged[-1]
+        gap = float(ev.onset) - float(prev.offset)
+        semi = abs(int(ev.midi) - int(prev.midi))
+        touch = gap <= max(0.03, max_flicker_sec * 0.5)
+        if not touch or semi > max_semitones:
+            merged.append(ev)
+            continue
+
+        # Absorb a short flicker into its longer neighbor.
+        if ev.duration <= max_flicker_sec and prev.duration >= ev.duration:
+            host = prev
+            guest = ev
+            replace_prev = True
+        elif prev.duration <= max_flicker_sec and ev.duration >= prev.duration:
+            host = ev
+            guest = prev
+            replace_prev = True
+        elif semi == 0:
+            host = prev
+            guest = ev
+            replace_prev = True
+        else:
+            merged.append(ev)
+            continue
+
+        onset = min(host.onset, guest.onset)
+        offset = max(host.offset, guest.offset)
+        # Keep host pitch; average confidence weighted by duration.
+        w_h = max(host.duration, 1e-6)
+        w_g = max(guest.duration, 1e-6)
+        conf = (host.confidence * w_h + guest.confidence * w_g) / (w_h + w_g)
+        combined = NoteEvent(
+            pitch_hz=host.pitch_hz,
+            midi=host.midi,
+            note=host.note,
+            onset=round(float(onset), 4),
+            offset=round(float(offset), 4),
+            duration=round(float(offset - onset), 4),
+            confidence=round(float(conf), 4),
+        )
+        if replace_prev:
+            merged[-1] = combined
+        else:
+            merged.append(combined)
+
+    # Second pass: drop residual ultra-short islands between same-pitch notes.
+    if len(merged) < 3:
+        return merged
+    out: list[NoteEvent] = [merged[0]]
+    i = 1
+    while i < len(merged):
+        cur = merged[i]
+        if (
+            i + 1 < len(merged)
+            and cur.duration <= max_flicker_sec
+            and out[-1].midi == merged[i + 1].midi
+            and abs(cur.midi - out[-1].midi) <= max_semitones
+            and (cur.onset - out[-1].offset) <= max_flicker_sec
+            and (merged[i + 1].onset - cur.offset) <= max_flicker_sec
+        ):
+            nxt = merged[i + 1]
+            onset = out[-1].onset
+            offset = nxt.offset
+            w0 = max(out[-1].duration, 1e-6)
+            w1 = max(nxt.duration, 1e-6)
+            conf = (out[-1].confidence * w0 + nxt.confidence * w1) / (w0 + w1)
+            out[-1] = NoteEvent(
+                pitch_hz=out[-1].pitch_hz,
+                midi=out[-1].midi,
+                note=out[-1].note,
+                onset=round(float(onset), 4),
+                offset=round(float(offset), 4),
+                duration=round(float(offset - onset), 4),
+                confidence=round(float(conf), 4),
+            )
+            i += 2
+            continue
+        out.append(cur)
+        i += 1
+    return out
+
+
 def transcribe_notes(
     audio: np.ndarray,
     *,
@@ -245,6 +350,8 @@ def transcribe_notes(
     median_filter_size: int = DEFAULT_MEDIAN_FILTER_SIZE,
     use_onsets: bool = True,
     min_onset_strength: float = DEFAULT_MIN_ONSET_STRENGTH,
+    merge_flicker: bool = True,
+    flicker_merge_sec: float = DEFAULT_FLICKER_MERGE_SEC,
     frame_length: int = DEFAULT_FRAME_LENGTH,
     hop_length: int = DEFAULT_HOP_LENGTH,
 ) -> tuple[list[NoteEvent], dict]:
@@ -281,6 +388,11 @@ def transcribe_notes(
         median_filter_size=median_filter_size,
         onset_times=onset_times,
     )
+    raw_count = len(events)
+    if merge_flicker:
+        events = merge_pitch_flicker(
+            events, max_flicker_sec=flicker_merge_sec
+        )
     meta = {
         "frame_length": frame_length,
         "hop_length": hop_length,
@@ -289,6 +401,9 @@ def transcribe_notes(
         "median_filter_size": median_filter_size,
         "use_onsets": use_onsets,
         "min_onset_strength": min_onset_strength if use_onsets else None,
+        "merge_flicker": merge_flicker,
+        "flicker_merge_sec": flicker_merge_sec if merge_flicker else None,
+        "num_notes_pre_merge": raw_count,
         "num_onsets": int(len(onset_times)),
         "onset_times": [round(float(t), 4) for t in onset_times.tolist()],
     }

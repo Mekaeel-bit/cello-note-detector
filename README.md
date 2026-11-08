@@ -2,7 +2,9 @@
 
 Hackathon app for identifying cello notes from **monophonic audio** (video / fingerings later).
 
-**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) → **tempo / beat grid + quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+**Current milestone:** multi-note monophonic melody transcription (pyin + onsets) → **tempo / key / beat grid + coarser quantized note durations and rests** → optional **MusicXML / MIDI** export, plus optional **MERT-v1-95M** frame embeddings.
+
+Tempo and key are inferred from **audio content** (spectral onsets + pitch histogram). They are **never** read from filenames. Optional `--bpm` / `--key` overrides are available when you already know them.
 
 ## Setup
 
@@ -34,9 +36,9 @@ python -m cello_note_detector data/Recordings/Am_LFCello_SP_01_376.wav
 python -m cello_note_detector data/Recordings/ -o outputs --save-embeddings
 ```
 
-### Rhythm analysis (tempo + quantization + rests)
+### Rhythm analysis (tempo + key + quantization + rests)
 
-Rhythm runs **by default** after note detection (classical DSP: `librosa.beat.beat_track` blended with note-onset IOIs). No MERT download needed:
+Rhythm runs **by default** after note detection. Defaults favour readable scores (quarters / eighths) over fussy 16th/32nd grids:
 
 ```bash
 # Multi-note phrases (recommended for rhythm checks)
@@ -49,6 +51,10 @@ python -m cello_note_detector data/multi_note_phrases/rhythm_quarters_with_rests
 # Same clip → JSON + MusicXML + MIDI
 python -m cello_note_detector data/multi_note_phrases/rhythm_quarters_with_rests.wav \
   -o outputs/sheet --skip-mert --musicxml --midi
+
+# Optional overrides (still never read from the filename)
+python -m cello_note_detector data/multi_note_phrases/120_Gm_Cello_33_189_SP.wav \
+  -o outputs/sheet --skip-mert --musicxml --bpm 120 --key Gm --quantize coarse
 ```
 
 Useful flags:
@@ -57,17 +63,29 @@ Useful flags:
 |------|---------|
 | `--skip-mert` | pyin + rhythm only (no HF model download) |
 | `--skip-rhythm` | notes only (no tempo / rests / duration values) |
+| `--bpm 120` | override estimated tempo (BPM) |
+| `--key Gm` | override inferred key (`Gm`, `Bb`, `D major`, `A minor`, …) |
+| `--quantize medium` | coarseness preset: `coarse` / `medium` (default) / `fine` |
 | `--musicxml` | also write bass-clef `.musicxml` next to the JSON |
 | `--midi` | also write Type-1 `.mid` next to the JSON |
-| `--grid-beats 0.25` | snap grid in beats (default sixteenth) |
-| `--min-rest-sec 0.08` | minimum silence gap emitted as a rest |
+| `--grid-beats 0.5` | override snap grid in beats (preset default: eighth) |
+| `--min-rest-sec 0.12` | minimum silence gap emitted as a rest |
 | `--no-edge-rests` | omit leading/trailing rests; keep inter-note gaps only |
 | `--save-embeddings` | also write `[T, 768]` `.npy` next to the JSON |
 | `--device cpu` | force CPU |
 | `-o outputs` | output directory (default: `outputs/`) |
 | `--no-onsets` | disable onset-based note splits |
-| `--gap-tolerance 0.06` | bridge short unvoiced gaps inside one note |
-| `--min-duration 0.04` | drop flicker shorter than this |
+| `--gap-tolerance 0.08` | bridge short unvoiced gaps inside one note |
+| `--min-duration 0.06` | drop flicker shorter than this |
+| `--median-filter-size 9` | MIDI median window to reduce vibrato flicker |
+
+### Quantize presets
+
+| Preset | Grid | Duration catalog | Typical use |
+|--------|------|------------------|-------------|
+| `coarse` | eighth | whole → eighth (no 16ths/32nds) | readable MuseScore drafts |
+| `medium` (default) | eighth | + sixteenths | balanced |
+| `fine` | sixteenth | + dotted 16ths / 32nds | old dense behaviour |
 
 ### Output
 
@@ -77,18 +95,19 @@ For each WAV, writes `outputs/<stem>_notes.json` with:
   - `onset_beats`, `duration_beats`
   - `quantized_onset_beats`, `quantized_duration_beats`
   - `duration_value` (e.g. `quarter`, `eighth`, `dotted_quarter`)
-- `tempo`: `{bpm, beat_times, method, …}` beat grid estimate
+- `tempo`: `{bpm, beat_times, method, spectral_onset_bpm, …}` beat grid estimate
+- `key`: `{name, tonic, mode, fifths, method, confidence}` inferred (or `--key`) signature
 - `rests`: silence gaps as quantized rest events (same rhythm fields as notes). **Inter-note gaps** are the primary rests; leading/trailing silence is included unless `--no-edge-rests`.
 - `events`: chronological mix of `{type: "note"|"rest", …}` for a single timeline
 - `num_notes` / `num_rests`
-- `segmentation`: hop/frame settings, onset times, gap/median options
+- `segmentation`: hop/frame settings, onset times, gap/median / flicker-merge options
 - `mert.summary`: embedding shape / mean / std (unless `--skip-mert`)
 
 Optional sheet artifacts (same stem, next to the JSON):
 
 | Flag | File | Contents |
 |------|------|----------|
-| `--musicxml` | `<stem>.musicxml` | Bass-clef partwise MusicXML 3.1 (notes + rests + tempo) |
+| `--musicxml` | `<stem>.musicxml` | Bass-clef partwise MusicXML 3.1 (notes + rests + tempo + key) |
 | `--midi` | `<stem>.mid` | Type-1 MIDI from the quantized timeline (rests = silence) |
 
 Example rhythm fields on a note / rest:
@@ -104,19 +123,19 @@ Example rhythm fields on a note / rest:
 }
 ```
 
-Console prints note preview, rest preview, estimated BPM, export paths, and optional MERT shape.
+Console prints note preview, rest preview, estimated BPM, key, export paths, and optional MERT shape.
 
 ### Opening MusicXML
 
 1. Run with `--musicxml` (rhythm must stay enabled — do not pass `--skip-rhythm`).
 2. Open the `.musicxml` file in **[MuseScore](https://musescore.org/)** (File → Open), or Dorico / Finale / Sibelius / flat.io.
-3. You should see a **bass-clef** cello staff in 4/4 with the estimated metronome mark. Rests appear as rest glyphs, not missing notes.
+3. You should see a **bass-clef** cello staff in 4/4 with the estimated metronome mark and inferred key signature. Rests appear as rest glyphs, not missing notes.
 
 MIDI (`.mid`) opens in the same apps or any DAW for a quick playback sanity check.
 
 ## Multi-note tests
 
-The sample-pack loops under `data/Recordings/` are mostly sustained single pitches. For **multi-note** and **rhythm/rest** checks, use the synthetic phrases in `data/multi_note_phrases/` (additive cello-range tones — license-clean; see that folder’s README).
+The sample-pack loops under `data/Recordings/` are mostly sustained single pitches. For **multi-note** and **rhythm/rest** checks, use the synthetic phrases in `data/multi_note_phrases/` (additive cello-range tones — license-clean; see that folder’s README). Real multi-note sample-pack clips in that folder are also good regression checks — compare by ear/structure, and do **not** trust tempo/key tokens in the filename.
 
 ```bash
 # pyin + rhythm (fast)
@@ -139,7 +158,7 @@ python scripts/generate_multi_note_phrases.py
 ```text
 src/cello_note_detector/
   audio/          # load, pyin + onsets, MERT embed
-  decode/         # note events + rhythm (tempo, quantize, rests)
+  decode/         # note events + rhythm (tempo, key, quantize, rests)
   export/         # MusicXML + MIDI writers
   cli.py          # entrypoint
 scripts/
@@ -153,8 +172,9 @@ outputs/                  # generated JSON / MusicXML / MIDI / .npy (gitignored)
 
 - Scope v1: **audio-only**, monophonic cello, **MERT-v1-95M** (not 330M).
 - Transformers is pinned to **4.43.4** for MERT’s custom code.
-- Segmentation splits on MIDI pitch changes, short gaps, and spectral onsets (so repeated same-pitch notes can separate). It is still a classical baseline — vibrato, slides, and noisy real recordings can merge/split notes incorrectly.
-- Tempo/BPM is a **heuristic** (`beat_track` + note IOIs). Short clips, rubato, or single sustained drones can yield unstable or octave-ambiguous BPM; quantized `duration_value` labels follow that estimate.
+- Segmentation splits on MIDI pitch changes, short gaps, and spectral onsets (so repeated same-pitch notes can separate). A post-pass merges short ±1-semitone vibrato flicker. Slides and noisy real recordings can still merge/split notes incorrectly.
+- Tempo/BPM is a **heuristic** (spectral-onset IOIs + `beat_track`, with note-duration octave resolve). Short clips, rubato, or single sustained drones can still be octave-ambiguous; use `--bpm` when you know the pulse.
+- Key is inferred from a duration-weighted pitch-class histogram (Krumhansl–Schmuckler). Sparse or heavily chromatic clips can pick the wrong mode/tonic; use `--key` to override. Filenames are never consulted.
 - Rests come from **silence gaps**, not a trained rest detector. Gaps shorter than `--min-rest-sec` are ignored; very short articulation gaps may be missed or folded into note boundaries via `--gap-tolerance`.
-- MusicXML/MIDI export is a **straight transcription dump** (4/4, C major key signature, bass clef, sequential quantized events). It does not infer key/meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
+- MusicXML/MIDI export is a **straight transcription dump** (4/4, inferred/override key signature, bass clef, sequential quantized events). It does not infer meter, engraver layout, or beaming polish. `--musicxml` / `--midi` require rhythm (they no-op with a warning under `--skip-rhythm`).
 - Out of scope for this milestone: website `/transcribe` backend, video, bowings/fingerings, MERT fine-tuning.

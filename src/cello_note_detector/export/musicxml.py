@@ -27,8 +27,8 @@ _DURATION_TYPES: dict[str, tuple[str, bool, float]] = {
     "thirty_second": ("32nd", False, 0.125),
 }
 
-# MIDI pitch-class → (step, alter)
-_PC_TO_STEP_ALTER: tuple[tuple[str, int], ...] = (
+# MIDI pitch-class → (step, alter) — sharp-biased default spelling.
+_PC_TO_STEP_ALTER_SHARP: tuple[tuple[str, int], ...] = (
     ("C", 0),
     ("C", 1),  # C#
     ("D", 0),
@@ -43,13 +43,41 @@ _PC_TO_STEP_ALTER: tuple[tuple[str, int], ...] = (
     ("B", 0),
 )
 
+# Flat-biased spelling (prefer Bb / Eb / Ab when key has flats).
+_PC_TO_STEP_ALTER_FLAT: tuple[tuple[str, int], ...] = (
+    ("C", 0),
+    ("D", -1),  # Db
+    ("D", 0),
+    ("E", -1),  # Eb
+    ("E", 0),
+    ("F", 0),
+    ("G", -1),  # Gb
+    ("G", 0),
+    ("A", -1),  # Ab
+    ("A", 0),
+    ("B", -1),  # Bb
+    ("B", 0),
+)
 
-def midi_to_pitch(midi: int) -> tuple[str, int, int]:
+
+def midi_to_pitch(
+    midi: int,
+    *,
+    prefer_flats: bool = False,
+) -> tuple[str, int, int]:
     """Return (step, alter, octave) for a MIDI note number."""
     midi = int(midi)
-    step, alter = _PC_TO_STEP_ALTER[midi % 12]
+    table = _PC_TO_STEP_ALTER_FLAT if prefer_flats else _PC_TO_STEP_ALTER_SHARP
+    step, alter = table[midi % 12]
     octave = midi // 12 - 1
     return step, alter, octave
+
+
+def _key_fifths(result: dict) -> int:
+    key = result.get("key")
+    if isinstance(key, dict) and key.get("fifths") is not None:
+        return int(key["fifths"])
+    return 0
 
 
 def beats_to_divisions(beats: float, *, divisions: int = DIVISIONS) -> int:
@@ -153,8 +181,13 @@ def _beats_to_type_and_dots(beats: float) -> tuple[str, int]:
     return "32nd", 0
 
 
-def _append_pitch(note_el: ET.Element, midi: int) -> None:
-    step, alter, octave = midi_to_pitch(midi)
+def _append_pitch(
+    note_el: ET.Element,
+    midi: int,
+    *,
+    prefer_flats: bool = False,
+) -> None:
+    step, alter, octave = midi_to_pitch(midi, prefer_flats=prefer_flats)
     pitch = ET.SubElement(note_el, "pitch")
     ET.SubElement(pitch, "step").text = step
     if alter:
@@ -170,6 +203,7 @@ def _append_note_element(
     beats: float,
     divisions: int,
     tie: str | None = None,
+    prefer_flats: bool = False,
 ) -> None:
     """Append one <note> (sounding or rest) for ``beats`` length."""
     note_el = ET.SubElement(measure, "note")
@@ -177,7 +211,7 @@ def _append_note_element(
         ET.SubElement(note_el, "rest")
     else:
         assert midi is not None
-        _append_pitch(note_el, midi)
+        _append_pitch(note_el, midi, prefer_flats=prefer_flats)
 
     dur_div = beats_to_divisions(beats, divisions=divisions)
     ET.SubElement(note_el, "duration").text = str(dur_div)
@@ -227,13 +261,16 @@ def build_musicxml(
     """Build a partwise MusicXML tree from a CLI result dict.
 
     Uses quantized ``duration_value`` / beat lengths from the rhythm layer
-    and places events sequentially (monophonic). Bass clef, 4/4, C major.
+    and places events sequentially (monophonic). Bass clef, 4/4, with the
+    inferred (or overridden) key signature from ``result["key"]``.
     """
     events = _iter_score_events(result)
     bpm = 120.0
     tempo = result.get("tempo")
     if isinstance(tempo, dict) and tempo.get("bpm"):
         bpm = float(tempo["bpm"])
+    fifths = _key_fifths(result)
+    prefer_flats = fifths < 0
 
     if title is None:
         audio_path = result.get("audio_path")
@@ -258,7 +295,7 @@ def build_musicxml(
     attrs = ET.SubElement(measure, "attributes")
     ET.SubElement(attrs, "divisions").text = str(divisions)
     key = ET.SubElement(attrs, "key")
-    ET.SubElement(key, "fifths").text = "0"
+    ET.SubElement(key, "fifths").text = str(fifths)
     time_el = ET.SubElement(attrs, "time")
     ET.SubElement(time_el, "beats").text = str(int(measure_beats))
     ET.SubElement(time_el, "beat-type").text = "4"
@@ -282,6 +319,7 @@ def build_musicxml(
             midi=None,
             beats=measure_beats,
             divisions=divisions,
+            prefer_flats=prefer_flats,
         )
         return score
 
@@ -337,6 +375,7 @@ def build_musicxml(
                 beats=chunk,
                 divisions=divisions,
                 tie=tie,
+                prefer_flats=prefer_flats,
             )
             filled += chunk
 
@@ -349,6 +388,7 @@ def build_musicxml(
                 midi=None,
                 beats=rest_beats,
                 divisions=divisions,
+                prefer_flats=prefer_flats,
             )
 
     return score
