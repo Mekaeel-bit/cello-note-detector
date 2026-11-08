@@ -10,6 +10,7 @@ build/
 outputs/*
 !outputs/.gitkeep
 *.npy
+.pytest_cache/
 
 # Hugging Face / torch caches (local)
 .cache/

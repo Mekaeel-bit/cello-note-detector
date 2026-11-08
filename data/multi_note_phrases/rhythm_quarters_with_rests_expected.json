@@ -1,0 +1,43 @@
+{
+  "name": "rhythm_quarters_with_rests",
+  "description": "Rhythm test @ 100 BPM: C3 (quarter), quarter rest, E3 (quarter), quarter rest, G3 (half). Ground-truth rests are intentional silences.",
+  "synthesis": "additive harmonic (cello-range), not a sampled instrument",
+  "sample_rate": 44100,
+  "duration_sec": 3.7,
+  "num_notes": 3,
+  "expected_notes": [
+    {
+      "midi": 48,
+      "onset": 0.05,
+      "offset": 0.65,
+      "duration": 0.6
+    },
+    {
+      "midi": 52,
+      "onset": 1.25,
+      "offset": 1.85,
+      "duration": 0.6
+    },
+    {
+      "midi": 55,
+      "onset": 2.45,
+      "offset": 3.65,
+      "duration": 1.2
+    }
+  ],
+  "num_rests": 2,
+  "expected_rests": [
+    {
+      "onset": 0.65,
+      "offset": 1.25,
+      "duration": 0.6
+    },
+    {
+      "onset": 1.85,
+      "offset": 2.45,
+      "duration": 0.6
+    }
+  ],
+  "source": "scripts/generate_multi_note_phrases.py",
+  "tempo_bpm": 100.0
+}
