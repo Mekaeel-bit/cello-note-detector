@@ -15,3 +15,9 @@ src/cello_note_detector/audio/mert.py
 src/cello_note_detector/audio/pitch_baseline.py
 src/cello_note_detector/decode/__init__.py
 src/cello_note_detector/decode/events.py
+src/cello_note_detector/decode/rhythm.py
+src/cello_note_detector/export/__init__.py
+src/cello_note_detector/export/midi.py
+src/cello_note_detector/export/musicxml.py
+tests/test_export.py
+tests/test_rhythm.py
