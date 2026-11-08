@@ -3,41 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cello Note Detector</title>
+  <title>Soli — Cello Video → Score</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.9/build/opensheetmusicdisplay.min.js" defer></script>
 </head>
 <body>
-    <header> 
-      <h1>Cello Note Detector</h1>
-      <p> Listen to a cello and writes down the notes, live or from a recording</p>
-    </header>
-    
-    <nav class ="tabs">
-      <button class = "tab active" data-tab = "live">Live Microphone</button>
-      <button class = "tab" data-tab="upload">Upload Recording</button>
-    </nav>
+  <header>
+    <h1>Soli</h1>
+    <p>Upload a front-facing cello video → sheet music with fingerings &amp; positions</p>
+  </header>
 
-    <main>
-      <section id = "live" class = "card">
-        <button id = "micBtn" class = "primary"> Start Microphone </button>
-        <div id = "liveNote">-</div>
-        <div id = "liveInfo"> Play or hum a note near the mic</div>
-        <canvas id = "liveRoll" width = "900" height="260"></canvas>
-      </section>
+  <nav class="tabs">
+    <button class="tab active" data-tab="video">Video → Score</button>
+    <button class="tab" data-tab="live">Live Microphone</button>
+    <button class="tab" data-tab="upload">Audio Upload</button>
+  </nav>
 
-      <section id = "upload" class = "card" hidden>
-        <div class = "row">
-          <input type = "file" id = "file" accept = "audio/*">
-          <button id = "go" class = "primary"> Detect Notes</button>
-        </div>
-        <div id = "status"> Choose a solo cello clip (WAV)</div>
-        <audio id="player" controls></audio>
-        <canvas id="roll" width="900" height="320"></canvas>
-        <div id="list"></div>
-      </section>
-    </main>
-    
+  <main>
+    <section id="video" class="card">
+      <p class="hint">
+        Accepts <strong>mp4 / webm / mov</strong>. Runs the AV fuse pipeline
+        (<code>--fuse --musicxml</code>) and returns bass-clef MusicXML with fingerings + LH position.
+      </p>
+      <div class="row">
+        <input type="file" id="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov">
+        <button id="videoGo" class="primary">Make Score</button>
+      </div>
+      <div class="row opts">
+        <label class="check">
+          <input type="checkbox" id="fastDemo" checked>
+          Fast demo (<code>--max-frames 180</code>)
+        </label>
+        <label class="check">
+          <input type="checkbox" id="wantOverlay" checked>
+          Overlay stills
+        </label>
+      </div>
+      <div id="videoStatus">Choose a solo cello clip (try <code>data/video/clips/mspho_a_major_3oct_front.mp4</code>)</div>
+      <video id="videoPreview" controls hidden></video>
+      <div id="videoActions" class="row" hidden>
+        <a id="dlMusicxml" class="primary linkbtn" download>Download MusicXML</a>
+        <a id="dlScoreJson" class="ghost linkbtn" download>Score JSON</a>
+      </div>
+      <div id="scoreMeta" class="hint" hidden></div>
+      <div id="overlayRow" class="overlay-row" hidden></div>
+      <div id="osmdContainer" class="osmd" hidden></div>
+      <p class="hint" id="musescoreHint" hidden>
+        Prefer MuseScore? File → Open the downloaded <code>.musicxml</code>.
+      </p>
+    </section>
+
+    <section id="live" class="card" hidden>
+      <button id="micBtn" class="primary">Start Microphone</button>
+      <div id="liveNote">-</div>
+      <div id="liveInfo">Play or hum a note near the mic</div>
+      <canvas id="liveRoll" width="900" height="260"></canvas>
+    </section>
+
+    <section id="upload" class="card" hidden>
+      <div class="row">
+        <input type="file" id="file" accept="audio/*">
+        <button id="go" class="primary">Detect Notes</button>
+      </div>
+      <div id="status">Choose a solo cello clip (WAV). Requires a /transcribe backend.</div>
+      <audio id="player" controls></audio>
+      <canvas id="roll" width="900" height="320"></canvas>
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <footer>
+    Local server: <code>python -m cello_note_detector.web</code> → http://127.0.0.1:8765/
+  </footer>
+
   <script src="script.js"></script>
-  <script src="live.js"></script>   
+  <script src="live.js"></script>
 </body>
 </html>

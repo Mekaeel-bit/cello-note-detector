@@ -219,6 +219,31 @@ def _append_pitch(
     ET.SubElement(pitch, "octave").text = str(octave)
 
 
+def _append_technical(
+    notations: ET.Element,
+    *,
+    fingering: int | None = None,
+    string_number: int | None = None,
+) -> None:
+    """Attach MusicXML ``<technical>`` fingering / string (bowed-string numbers)."""
+    if fingering is None and string_number is None:
+        return
+    technical = ET.SubElement(notations, "technical")
+    if fingering is not None:
+        # 0 = open string; 1–4 = cello fingers (thumb later as fingering 5 if needed).
+        ET.SubElement(technical, "fingering").text = str(int(fingering))
+    if string_number is not None:
+        ET.SubElement(technical, "string").text = str(int(string_number))
+
+
+def _append_position_direction(measure: ET.Element, label: str) -> None:
+    """Left-hand position as words above the staff (I–IV / thumb / high)."""
+    direction = ET.SubElement(measure, "direction", placement="above")
+    direction_type = ET.SubElement(direction, "direction-type")
+    words = ET.SubElement(direction_type, "words", **{"font-style": "italic"})
+    words.text = label
+
+
 def _append_note_element(
     measure: ET.Element,
     *,
@@ -228,8 +253,20 @@ def _append_note_element(
     divisions: int,
     tie: str | None = None,
     prefer_flats: bool = False,
+    fingering: int | None = None,
+    string_number: int | None = None,
+    position_mark: str | None = None,
+    attach_technicals: bool = True,
 ) -> None:
-    """Append one <note> (sounding or rest) for ``beats`` length."""
+    """Append one <note> (sounding or rest) for ``beats`` length.
+
+    Optional ``fingering`` / ``string_number`` / ``position_mark`` support
+    AV-fusion sheet export. Technicals attach on the primary (first) tied
+    note when ``attach_technicals`` is True.
+    """
+    if position_mark and attach_technicals and not is_rest:
+        _append_position_direction(measure, position_mark)
+
     note_el = ET.SubElement(measure, "note")
     if is_rest:
         ET.SubElement(note_el, "rest")
@@ -252,13 +289,24 @@ def _append_note_element(
     for _ in range(dots):
         ET.SubElement(note_el, "dot")
 
-    if tie in ("start", "stop", "continue"):
+    need_tie = tie in ("start", "stop", "continue")
+    need_tech = (
+        attach_technicals
+        and not is_rest
+        and (fingering is not None or string_number is not None)
+    )
+    if need_tie or need_tech:
         notations = ET.SubElement(note_el, "notations")
-        if tie == "continue":
-            ET.SubElement(notations, "tied", type="stop")
-            ET.SubElement(notations, "tied", type="start")
-        else:
-            ET.SubElement(notations, "tied", type=tie)
+        if need_tie:
+            if tie == "continue":
+                ET.SubElement(notations, "tied", type="stop")
+                ET.SubElement(notations, "tied", type="start")
+            else:
+                ET.SubElement(notations, "tied", type=tie)
+        if need_tech:
+            _append_technical(
+                notations, fingering=fingering, string_number=string_number
+            )
 
 
 def _pad_rest_chunks(beats: float) -> list[float]:
@@ -405,6 +453,10 @@ def build_musicxml(
             elif not chunk_rest:
                 sounding_i += 1
 
+            # Finger / string / position only on the first sounding atom of a tie.
+            is_primary = (not chunk_rest) and (
+                n_sounding <= 1 or tie in (None, "start")
+            )
             _append_note_element(
                 measure,
                 is_rest=chunk_rest,
@@ -413,6 +465,10 @@ def build_musicxml(
                 divisions=divisions,
                 tie=tie,
                 prefer_flats=prefer_flats,
+                fingering=None if chunk_rest else event.get("score_finger"),
+                string_number=None if chunk_rest else event.get("score_string_number"),
+                position_mark=None if chunk_rest else event.get("score_position_mark"),
+                attach_technicals=is_primary,
             )
             filled += chunk_beats
 

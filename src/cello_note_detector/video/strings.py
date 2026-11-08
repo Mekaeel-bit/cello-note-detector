@@ -14,20 +14,19 @@ CELLO_STRINGS: tuple[tuple[str, int], ...] = (
 )
 OPEN_STRING_MIDI = {midi: name for name, midi in CELLO_STRINGS}
 STRING_ORDER = [name for name, _ in CELLO_STRINGS]  # low → high
+OPEN_MIDI_BY_STRING = {name: midi for name, midi in CELLO_STRINGS}
 
-# Rough first-position chromatic finger map (semitones above open → finger).
-# Open = 0; beyond ~7–8 st is treated as a higher position (thumb/shift proxy).
-_FIRST_POS_FINGER = {
-    0: 0,
-    1: 1,
-    2: 1,
-    3: 2,
-    4: 2,
-    5: 3,
-    6: 3,
-    7: 4,
-    8: 4,
+# Left-hand position → approx. semitone of 1st-finger stop above the open string.
+# General cello prior (not scale-specific).
+POSITION_BASE_ST: dict[str, int] = {
+    "I": 0,
+    "II": 3,
+    "III": 5,
+    "IV": 7,
+    "thumb": 12,
+    "high": 12,
 }
+POSITION_SEQUENCE: tuple[str, ...] = ("I", "II", "III", "IV", "thumb")
 
 
 @dataclass(frozen=True)
@@ -56,13 +55,47 @@ def _position_band(semitones: int) -> str:
     return "high"
 
 
-def _suggested_finger(semitones: int) -> int:
-    if semitones < 0:
-        return -1
-    if semitones in _FIRST_POS_FINGER:
-        return _FIRST_POS_FINGER[semitones]
-    # Higher neck: keep finger 4 as a crude stop proxy.
-    return 4
+def finger_for_stop(
+    semitones_above_open: int,
+    *,
+    position: str = "I",
+) -> int | None:
+    """Map a stop on a string in a LH position → finger 0–4.
+
+    Finger **0** only when the sounding pitch is the open string.
+    Otherwise chromatic spacing relative to the position's 1st-finger base:
+    1st ≈ 1–2 st above base, 2nd ≈ 3–4, 3rd ≈ 5–6, 4th ≈ 7–8.
+    Returns ``None`` if the stop is out of comfortable reach (needs a shift).
+    """
+    st = int(semitones_above_open)
+    if st < 0:
+        return None
+    if st == 0:
+        return 0
+    base = int(POSITION_BASE_ST.get(position, 0))
+    # Open-string pitch while hand is high on the neck is not "finger 0".
+    d = st - base
+    if d < 1:
+        # Below 1st-finger seat in this position — treat as 1 (stopped).
+        return 1
+    if d <= 2:
+        return 1
+    if d <= 4:
+        return 2
+    if d <= 6:
+        return 3
+    if d <= 8:
+        return 4
+    return None
+
+
+def position_needed_for_stop(semitones_above_open: int) -> str:
+    """Lowest LH position that can reach ``semitones_above_open`` with finger ≤4."""
+    st = int(semitones_above_open)
+    for pos in POSITION_SEQUENCE:
+        if finger_for_stop(st, position=pos) is not None:
+            return pos
+    return "high"
 
 
 def pitch_string_hypotheses(
@@ -70,12 +103,12 @@ def pitch_string_hypotheses(
     *,
     max_semitones: int = 24,
 ) -> list[StringHypothesis]:
-    """Return feasible (string, position) hypotheses for a sounding MIDI pitch.
+    """Return feasible (string, stop) hypotheses for a sounding MIDI pitch.
 
-    A pitch is playable on any string whose open MIDI is ≤ the sounding pitch
-    and within ``max_semitones`` above the open string. Hypotheses are ranked
-    by ascending position (prefer lower hand / fewer semitones), then by
-    lower string when tied — a general monophonic prior, not Bach-specific.
+    Ranked by ascending semitones-above-open (prefer lower hand), then lower
+    string when tied — a general monophonic prior, not piece-specific.
+    ``suggested_finger`` is the **first-position** finger for that stop; callers
+    that track sticky LH position should recompute with ``finger_for_stop``.
     """
     midi = int(midi)
     hyps: list[StringHypothesis] = []
@@ -83,10 +116,10 @@ def pitch_string_hypotheses(
         st = midi - open_midi
         if st < 0 or st > max_semitones:
             continue
-        finger = _suggested_finger(st)
+        finger = finger_for_stop(st, position="I")
+        if finger is None:
+            finger = 4
         band = _position_band(st)
-        # Prefer lower positions; tiny preference for lower strings at same st
-        # (open C pedal vs same pitch high on G is uncommon in first position).
         string_idx = STRING_ORDER.index(name)
         rank = float(st) + 0.05 * string_idx
         hyps.append(
@@ -95,7 +128,7 @@ def pitch_string_hypotheses(
                 open_midi=open_midi,
                 midi=midi,
                 semitones_above_open=st,
-                suggested_finger=finger,
+                suggested_finger=int(finger),
                 position_band=band,
                 rank_score=round(rank, 4),
             )
