@@ -1,6 +1,6 @@
-const NOTE_names = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const LOW = 36, High = 84;
-const Window_SEC = 8;
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const LOW = 36, HIGH = 84;      // C2 to C6, the cello range
+const WINDOW_SEC = 8;           // seconds shown on the roll
 
 const micBtn = document.getElementById("micBtn");
 const liveNote = document.getElementById("liveNote");
@@ -12,76 +12,88 @@ let actx, analyser, buf, stream, timer;
 let running = false;
 let liveNotes = [];
 let current = null;
-let candinate = null, candCount = 0, lastVoiced = 0;
+let candidate = null, candCount = 0, lastVoiced = 0;
 
-function detectPitch(data, sr){
+
+function detectPitch(data, sr) {
     let rms = 0;
-    for (const v of data) rms += v * v;
-    if (rms < 0.01) return -1;
+  for (const v of data) rms += v * v;
+    if (Math.sqrt(rms / data.length) < 0.01) return -1;
 
-    const minLag = Math.floor(sr/1000);
-    const maxLag = Math.floor(sr/60);
-    let zero = 0;
-    for (let i = 0; i < data.length; i++) zero += data[i] * data[i];
+    const W = data.length >> 1;
+    const minTau = Math.floor(sr / 1000);
+    const maxTau = Math.min(Math.floor(sr / 60), W);
+    const d = new Float32Array(maxTau);
 
-    let bestLag = -1, best = 0;
-    for(let lag = minLag; lag < maxLag; lag++){
-        let c = 0;
-        for (let i = 0; i < data.length - lag; i++) c += data[i] * data[i + lag];
-        if (c > best) { best = c; bestLag = lag;}
+for (let tau = 1; tau < maxTau; tau++) {
+    let s = 0;
+    for (let i = 0; i < W; i++) { const x = data[i] - data[i + tau]; s += x * x; }
+    d[tau] = s;
     }
-    if (bestLag < 0 || best / zero < 0.4) return -1;
-    return sr / bestLag;
+    let run = 0; d[0] = 1;
+  for (let tau = 1; tau < maxTau; tau++) { run += d[tau]; d[tau] = d[tau] * tau / run; }
+
+for (let tau = minTau; tau < maxTau - 1; tau++) {
+    if (d[tau] < 0.15) {
+    while (tau + 1 < maxTau && d[tau + 1] < d[tau]) tau++;
+    if (tau + 1 >= maxTau) return -1;
+    const a = d[tau - 1], b = d[tau], c = d[tau + 1];
+      const denom = 2 * (a - 2 * b + c);
+        return sr / (tau + (denom ? (a - c) / denom : 0));
+    }
+    }
+    return -1;
 }
 
-function step(){
-    const now  = performance.now() / 1000;
-    analyser.getFloatTimeDomaininDta(buf);
+function step() {
+    const now = performance.now() / 1000;
+    analyser.getFloatTimeDomainData(buf);
     const f = detectPitch(buf, actx.sampleRate);
 
-    if (f > 0){
-        const exact = 69 + 12 * Math.log2(f / 440);
-        const midi = Math.round(exact);
-        const name = NOTE_names[midi % 12] + (Math.floor(midi / 12) - 1);
-        const cents = Math.round((exact - midi) * 100);
+    if (f > 0) {
+    const exact = 69 + 12 * Math.log2(f / 440);
+    const midi = Math.round(exact);
+    const name = NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1);
+    const cents = Math.round((exact - midi) * 100);
 
-        liveNote.textContent = name;
-        liveInfo.textContext = f.toFixed(1) + " Hz (" + (cents >= 0 ? "+" : "") + cents + " cents)";
-        lastVoiced = now;
+    liveNote.textContent = name;
+    liveInfo.textContent = f.toFixed(1) + " Hz  (" + (cents >= 0 ? "+" : "") + cents + " cents)";
+    lastVoiced = now;
 
-        if (midi === candinate) candCount++; else { candinate = midi; candCount = 1;}
-        if (candCount >= 3){
-            if (!current || current.midi !== midi){
-                current = {midi, name, start: now, end: now};
-                liveNotes.push(current);
-            } else {
-                current.end = now;
-            }
-        }
-    } else if (current && now - lastVoiced > 0.25){
-        current = null;
-        candinate = null;
-        candCount = 0;
-        liveNote.textContent = "-";
-        LiveInfo.textContent = "";
+
+    if (midi === candidate) candCount++; else { candidate = midi; candCount = 1; }
+    if (candCount >= 3) {
+    if (!current || current.midi !== midi) {
+        current = { midi, name, start: now, end: now };
+        liveNotes.push(current);
+    } else {
+        current.end = now;
+    }
+    }
+    } else if (now - lastVoiced > 0.25) {
+    current = null;
+    candidate = null;
+    candCount = 0;
+    liveNote.textContent = "-";
+    liveInfo.textContent = "Play or hum a note near the mic.";
     }
     drawLive(now);
 }
 
-function drawLive(now){
-    lg.clearRect(0, 0, lv.clientWidth, lv.height);
+function drawLive(now) {
+    lg.clearRect(0, 0, lv.width, lv.height);
     const rowH = lv.height / (HIGH - LOW + 1);
-    const t0 = now - Window_SEC;
+    const t0 = now - WINDOW_SEC;
     lg.font = "11px sans-serif";
 
-    liveNotes =  liveNotes.filter(n => n.end > t0);
-    liveNotes,forEach(n => {
-        const x = (n.start = t0) / WINDOW_SEC * lv.clientWidth;
-        const w = Math.max(3,(n.end - n.start) / WINDOW_SEC * lv.width);
-        const y = lv.height - (n.midi - LOW + 1) * rowH;
-        lg.fillStyle = n === current ? "#ffb84d" : "#4da3ff";
-        lg.fillRect(Math.max(0, x), y, w, rowH);
-        if (w > 22) { lg.fillStyle = "#000"; lg.fillText(n.name, x + 3, y + rowH - 2); }
+    liveNotes = liveNotes.filter(n => n.end > t0);
+    liveNotes.forEach(n => {
+    const x = (n.start - t0) / WINDOW_SEC * lv.width;
+    const w = Math.max(3, (n.end - n.start) / WINDOW_SEC * lv.width);
+    const y = lv.height - (n.midi - LOW + 1) * rowH;
+    lg.fillStyle = n === current ? "#ffb84d" : "#4da3ff";
+    lg.fillRect(Math.max(0, x), y, w, rowH);
+    if (w > 22) { lg.fillStyle = "#000"; lg.fillText(n.name, x + 3, y + rowH - 2); }
     });
 }
 
@@ -92,6 +104,7 @@ micBtn.onclick = async () => {
     stream.getTracks().forEach(t => t.stop());
     actx.close();
     micBtn.textContent = "Start microphone";
+    micBtn.classList.remove("live");
     return;
     }
     try {
@@ -111,5 +124,6 @@ micBtn.onclick = async () => {
     liveNotes = []; current = null; candidate = null; candCount = 0;
     running = true;
     micBtn.textContent = "Stop microphone";
+    micBtn.classList.add("live");
     timer = setInterval(step, 50);
 };

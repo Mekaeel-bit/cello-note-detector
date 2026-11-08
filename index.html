@@ -7,20 +7,35 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Cello Note Detector</h1>
-    <h2>Live Microphone</h2>
-    <div id = "liveNote">-</div>
-    <div id = "liveInfo"></div>
-    <canvas id = "liveRoll" width = "900" height="260"></canvas>
+    <header> 
+      <h1>Cello Note Detector</h1>
+      <p> Listen to a cello and writes down the notes, live or from a recording</p>
+    </header>
+    
+    <nav class ="tab">
+      <button class = "tab active" data-tab = "live">Live Microphone</button>
+      <button class = "tab" data-tab="upload">Upload Recording</button>
+    </nav>
 
-    <h2>Upload a recording</h2>
-    <input type="file" id="file" accept="audio/*">
-    <button id="go">Detect notes</button>
-    <div id="status">Choose a cello clip</div>
+    <main>
+      <section id = "live" class = "card">
+        <button id = "micBtn" class = "primary"> Start Microphone </button>
+        <div id = "liveNote">-</div>
+        <div id = "liveInfo"> Play or hum a note near the mic</div>
+        <canvas id = "liveRoll" width = "900" height="260"></canvas>
+      </section>
 
-    <audio id="player" controls></audio>
-    <canvas id="roll" width="900" height="320"></canvas>
-    <div id="list"></div>
+      <section id = "upload" class = "card" hidden>
+        <div class = "row">
+          <input type = "file" id = "file" accept = "audio/*">
+          <button id = "go" class = "primary"> Detect Notes</button>
+        </div>
+        <div id = "status"> Choose a solo cello clip (WAV)</div>
+        <audio id="player" controls></audio>
+        <canvas id="roll" width="900" height="320"></canvas>
+        <div id="list"></div>
+      </section>
+    </main>
     
   <script src="script.js"></script>
   <script src="live.js"></script>   
