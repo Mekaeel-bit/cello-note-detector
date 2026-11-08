@@ -145,7 +145,8 @@ pip install -r requirements-video.txt
 python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.mp4 \
   -o outputs/video --overlay --max-frames 180
 # AV fusion: pyin pitch ∩ landmarks → string + fingering + bow string
-python -m cello_note_detector.video data/video/clips/wmea_jr_scale_etude_front.mp4 \
+# (clip has audible cello; requires ffmpeg on PATH)
+python -m cello_note_detector.video data/video/clips/mspho_a_major_3oct_front.mp4 \
   -o outputs/video --fuse --overlay --max-frames 180
 # optional rough AV sync without fusion
 python -m cello_note_detector.video data/video/clips/wmea_hs_chromatic_scale_front.mp4 \

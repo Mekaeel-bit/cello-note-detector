@@ -3,6 +3,13 @@
 
 YouTube is often bot-gated in cloud VMs; we pull Internet Archive mirrors
 of the same watch URLs (see data/video/SOURCES.md).
+
+Preferred AV-fusion demo (audible cello) is *not* on IA — fetch locally:
+
+  yt-dlp -f "bv*[height<=720]+ba/b" --merge-output-format mp4 \\
+    -o data/video/raw/_XXFN5ZyKRk.%(ext)s \\
+    "https://www.youtube.com/watch?v=_XXFN5ZyKRk"
+  # then trim → data/video/clips/mspho_a_major_3oct_front.mp4 (see SOURCES.md)
 """
 
 from __future__ import annotations

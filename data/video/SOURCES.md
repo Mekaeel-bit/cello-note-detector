@@ -18,12 +18,23 @@ Trimmed H.264 demos (title cards removed; ~18–25 s each) for a runnable sandbo
 
 | Local file | Content | Angle | YouTube | Archive.org mirror |
 |------------|---------|-------|---------|--------------------|
+| **`mspho_a_major_3oct_front.mp4`** | **Three Octave A major Scale Cello** (recommended AV-fusion demo; has audible cello) | Front-facing | https://www.youtube.com/watch?v=_XXFN5ZyKRk | _(none yet — fetch with `yt-dlp`)_ |
 | `wmea_jr_scale_etude_front.mp4` | WMEA Jr cello **Scale Etude** (Dr. Ruth Boden / WSU) | Front / slight diagonal, landscape studio | https://www.youtube.com/watch?v=KZ4Id52zQw8 | https://archive.org/details/youtube-KZ4Id52zQw8 |
 | `wmea_hs_chromatic_scale_front.mp4` | WMEA HS cello **Chromatic Scale** | Front / slight diagonal, landscape studio | https://www.youtube.com/watch?v=_jecuyxPO6s | https://archive.org/details/youtube-_jecuyxPO6s |
 | `wmea_jr_scale_etude_intro_front.mp4` | Same Scale Etude **intro** talking + play | Front-facing vertical phone | https://www.youtube.com/watch?v=stMH0JKsqRQ | https://archive.org/details/youtube-stMH0JKsqRQ |
 | `wmea_hs_chromatic_intro_front.mp4` | Chromatic scale **intro** talking + play | Front-facing vertical phone | https://www.youtube.com/watch?v=yNxSElVqKcM | https://archive.org/details/youtube-yNxSElVqKcM |
 
-**Uploader / context:** Washington State University School of Music preparation tracks for WMEA auditions (“WMEA does not specifically endorse any preparation materials” per video descriptions).
+**Primary AV-fusion clip:** `mspho_a_major_3oct_front.mp4` — YouTube title *Three Octave A major Scale Cello* (channel **MsPhoOrchestra**; cellist Jeremiah Neely per channel branding). Bundled ~45 s H.264+AAC. Re-fetch locally:
+
+```bash
+yt-dlp -f "bv*[height<=720]+ba/b" --merge-output-format mp4 \
+  -o data/video/raw/_XXFN5ZyKRk.%(ext)s \
+  "https://www.youtube.com/watch?v=_XXFN5ZyKRk"
+ffmpeg -y -i data/video/raw/_XXFN5ZyKRk.mp4 -t 45 -c:v libx264 -pix_fmt yuv420p -c:a aac -ac 1 -b:a 128k \
+  data/video/clips/mspho_a_major_3oct_front.mp4
+```
+
+**Uploader / context (WMEA set):** Washington State University School of Music preparation tracks for WMEA auditions (“WMEA does not specifically endorse any preparation materials” per video descriptions). Some WMEA sandbox trims can look quiet / fail Windows fuse if `ffmpeg` is missing from PATH — prefer the MsPho A-major clip for pitch fusion.
 
 ## Optional candidates (not bundled; good next downloads)
 
